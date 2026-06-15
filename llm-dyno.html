@@ -1,226 +1,387 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="tokyonight">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LLM-Dyno</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Fira+Code:wght@400;500;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script>
+// set theme/font before paint to avoid flash
+(function(){
+  try{
+    var s = JSON.parse(localStorage.getItem('llm-dyno-settings')||'{}');
+    if(s.theme) document.documentElement.setAttribute('data-theme', s.theme);
+    if(s.scanlines) document.documentElement.setAttribute('data-scanlines','1');
+  }catch(e){}
+})();
+</script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600;700&display=swap');
-:root{
-  --bg:#08090d;--bg-panel:#0d1117;--bg-input:#161b22;--bg-msg-user:#1a2332;--bg-msg-ai:#0d1117;
-  --border:#1b2430;--text:#c9d1d9;--text-bright:#f0f6fc;--text-dim:#484f58;--text-code:#7ee787;
-  --accent:#58a6ff;--accent-warm:#f0883e;--accent-green:#3fb950;--accent-red:#f85149;
-  --accent-purple:#bc8cff;--accent-yellow:#d29922;--debug-bg:#0a0c10;--scrollbar:#21262d;
-  --font-size:14px;--debug-font-size:11.5px;--debug-width:520px;
-  --accent-think:#6ca8d8;--bg-thinking:#0a1520;--border-thinking:#1a3a52;
+/* ============================================================ THEMES */
+:root,[data-theme="tokyonight"]{
+  --bg:#1a1b26; --bg-soft:#1f2030; --bg-inset:#16161e; --bg-elev:#24283b;
+  --fg:#c0caf5; --fg-dim:#7a82a8; --fg-muted:#565f89;
+  --border:#2a2e42; --border-soft:#222536;
+  --accent:#7aa2f7; --accent-2:#bb9af7; --ok:#9ece6a; --warn:#e0af68;
+  --err:#f7768e; --cyan:#7dcfff; --selection:#283457;
 }
+[data-theme="catppuccin"]{
+  --bg:#1e1e2e; --bg-soft:#232336; --bg-inset:#181825; --bg-elev:#313244;
+  --fg:#cdd6f4; --fg-dim:#9399b2; --fg-muted:#6c7086;
+  --border:#313244; --border-soft:#262637;
+  --accent:#89b4fa; --accent-2:#cba6f7; --ok:#a6e3a1; --warn:#f9e2af;
+  --err:#f38ba8; --cyan:#94e2d5; --selection:#313244;
+}
+[data-theme="gruvbox"]{
+  --bg:#282828; --bg-soft:#32302f; --bg-inset:#1d2021; --bg-elev:#3c3836;
+  --fg:#ebdbb2; --fg-dim:#a89984; --fg-muted:#928374;
+  --border:#3c3836; --border-soft:#32302f;
+  --accent:#83a598; --accent-2:#d3869b; --ok:#b8bb26; --warn:#fabd2f;
+  --err:#fb4934; --cyan:#8ec07c; --selection:#504945;
+}
+[data-theme="nord"]{
+  --bg:#2e3440; --bg-soft:#343b4a; --bg-inset:#272c36; --bg-elev:#3b4252;
+  --fg:#e5e9f0; --fg-dim:#9aa5bb; --fg-muted:#6b7280;
+  --border:#3b4252; --border-soft:#343b4a;
+  --accent:#88c0d0; --accent-2:#b48ead; --ok:#a3be8c; --warn:#ebcb8b;
+  --err:#bf616a; --cyan:#8fbcbb; --selection:#434c5e;
+}
+[data-theme="latte"]{
+  --bg:#eff1f5; --bg-soft:#e6e9ef; --bg-inset:#dce0e8; --bg-elev:#ccd0da;
+  --fg:#4c4f69; --fg-dim:#6c6f85; --fg-muted:#9ca0b0;
+  --border:#bcc0cc; --border-soft:#ccd0da;
+  --accent:#1e66f5; --accent-2:#8839ef; --ok:#40a02b; --warn:#df8e1d;
+  --err:#d20f39; --cyan:#179299; --selection:#bcc0cc;
+}
+[data-theme="amber"]{
+  --bg:#1a1200; --bg-soft:#241900; --bg-inset:#120c00; --bg-elev:#2b1f00;
+  --fg:#ffb000; --fg-dim:#b37a00; --fg-muted:#7a5400;
+  --border:#3d2a00; --border-soft:#2b1f00;
+  --accent:#ffcc33; --accent-2:#ff9500; --ok:#c5d92e; --warn:#ffcc33;
+  --err:#ff5555; --cyan:#ffd982; --selection:#3d2a00;
+}
+[data-theme="amber"] body, [data-theme="amber"] .msg-text, [data-theme="amber"] .logo{ text-shadow:0 0 1px currentColor; }
+
+/* ============================================================ BASE */
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;height:100vh;overflow:hidden;font-size:var(--font-size)}
+:root{
+  --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --fs:13.5px; --debug-fs:11.5px; --debug-w:480px; --radius:6px;
+}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--mono); font-size:var(--fs);
+  line-height:1.6; overflow:hidden;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  font-feature-settings:"liga" 1,"calt" 1;
+}
+::selection{background:var(--selection)}
+:focus{outline:none}
+:focus-visible{outline:1.5px solid var(--accent); outline-offset:1px; border-radius:3px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--fg-muted)}
 
-.app{display:grid;grid-template-columns:1fr var(--debug-width);grid-template-rows:48px 1fr;height:100vh}
-.app.debug-closed{grid-template-columns:1fr 0px}
+/* optional scanlines */
+[data-scanlines="1"] body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.05) 3px,rgba(0,0,0,.05) 3px);
+}
+
+button{font-family:var(--mono);cursor:pointer;color:inherit}
+input,textarea,select{font-family:var(--mono);color:var(--fg)}
+
+/* ============================================================ LAYOUT */
+.app{display:grid;grid-template-columns:1fr var(--debug-w);grid-template-rows:46px 1fr;height:100vh}
+.app.debug-closed{grid-template-columns:1fr 0}
 .app.debug-closed .debug-col{display:none}
-
-.topbar{grid-column:1/-1;grid-row:1;background:var(--bg-panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;z-index:10}
-
+.topbar{grid-column:1/-1;grid-row:1;background:var(--bg-soft);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:9px;z-index:20}
 .chat-col{grid-column:1;grid-row:2;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.debug-col{grid-column:2;grid-row:2;display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--debug-bg);border-left:1px solid var(--border)}
+.debug-col{grid-column:2;grid-row:2;display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  background:var(--bg-inset);border-left:1px solid var(--border)}
 
-.topbar .logo{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:.85em;color:var(--accent);letter-spacing:1px;flex-shrink:0}
+/* ============================================================ TOPBAR */
+.logo{font-weight:600;font-size:.86em;letter-spacing:1.5px;color:var(--accent);flex-shrink:0;user-select:none}
+.logo b{color:var(--accent-2)}
 .sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
-.model-select{font-family:'IBM Plex Mono',monospace;font-size:.78em;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:6px;cursor:pointer;outline:none}
 .spacer{flex:1}
-.top-btn{font-family:'IBM Plex Mono',monospace;font-size:.72em;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
-.top-btn:hover{border-color:var(--accent);color:var(--text)}
-.top-btn.active{border-color:var(--accent-warm);color:var(--accent-warm)}
-.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
-.status-dot.connected{background:var(--accent-green);box-shadow:0 0 6px rgba(63,185,80,.4)}
-.status-dot.disconnected{background:var(--accent-red)}
-.status-dot.loading{background:var(--accent-yellow);animation:blink .6s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.status-label{font-family:'IBM Plex Mono',monospace;font-size:.7em;color:var(--text-dim);flex-shrink:0}
+.model-select{font-size:.78em;background:var(--bg-inset);border:1px solid var(--border);color:var(--fg);
+  padding:5px 9px;border-radius:var(--radius);cursor:pointer;outline:none;max-width:260px}
+.model-select:hover{border-color:var(--accent)}
+.icon-btn,.top-btn{font-size:.74em;background:var(--bg-inset);border:1px solid var(--border);color:var(--fg-dim);
+  padding:5px 11px;border-radius:var(--radius);transition:all .15s;white-space:nowrap;flex-shrink:0}
+.icon-btn{padding:5px 9px}
+.top-btn:hover,.icon-btn:hover{border-color:var(--accent);color:var(--fg)}
+.top-btn.active{border-color:var(--accent-2);color:var(--accent-2)}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--err)}
+.status-dot.connected{background:var(--ok);box-shadow:0 0 7px var(--ok)}
+.status-dot.loading{background:var(--warn);animation:blink .7s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.status-label{font-size:.68em;color:var(--fg-muted);flex-shrink:0;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.system-prompt-bar{background:var(--bg-panel);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:8px;align-items:flex-start;flex-shrink:0}
-.sp-label{font-family:'IBM Plex Mono',monospace;font-size:.68em;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent-purple);padding-top:6px;flex-shrink:0}
-.system-prompt-bar textarea{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--accent-purple);font-family:'IBM Plex Mono',monospace;font-size:.78em;resize:vertical;outline:none;min-height:32px;max-height:120px;line-height:1.5;transition:border-color .2s,opacity .2s}
-.system-prompt-bar textarea:focus{border-color:var(--accent-purple)}
-.sp-toggle{font-family:'IBM Plex Mono',monospace;font-size:.68em;background:none;border:1px solid var(--border);color:var(--text-dim);padding:4px 8px;border-radius:4px;cursor:pointer;flex-shrink:0;margin-top:2px}
-.sp-toggle:hover{border-color:var(--accent-purple);color:var(--accent-purple)}
-.sp-toggle.off{opacity:.4}
+/* ============================================================ SYSTEM PROMPT */
+.sys-bar{background:var(--bg-soft);border-bottom:1px solid var(--border);padding:7px 16px;
+  display:flex;gap:9px;align-items:flex-start;flex-shrink:0}
+.sys-label{font-size:.64em;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent-2);
+  padding-top:7px;flex-shrink:0;user-select:none}
+.sys-bar textarea{flex:1;background:var(--bg-inset);border:1px solid var(--border);border-radius:var(--radius);
+  padding:6px 10px;color:var(--accent-2);font-size:.78em;resize:vertical;outline:none;min-height:32px;
+  max-height:160px;line-height:1.5;transition:border-color .15s,opacity .15s}
+.sys-bar textarea:focus{border-color:var(--accent-2)}
+.mini-btn{font-size:.62em;background:none;border:1px solid var(--border);color:var(--fg-muted);
+  padding:4px 8px;border-radius:4px;flex-shrink:0;transition:all .15s}
+.mini-btn:hover{border-color:var(--accent-2);color:var(--accent-2)}
+.mini-btn.off{opacity:.4}
 
-.chat-area{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:4px;min-height:0}
-.chat-area::-webkit-scrollbar{width:6px}
-.chat-area::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px}
+/* ============================================================ CHAT */
+.chat-area{flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.chat-empty{margin:auto;text-align:center;color:var(--fg-muted);max-width:440px;line-height:1.9}
+.chat-empty .big{font-size:2.4em;opacity:.35;margin-bottom:14px}
+.chat-empty kbd{background:var(--bg-inset);border:1px solid var(--border);padding:1px 5px;border-radius:3px;font-size:.85em}
 
-.scroll-lock-indicator{display:none;position:sticky;bottom:0;left:0;right:0;text-align:center;padding:6px;background:linear-gradient(transparent,rgba(8,9,13,.95));z-index:5}
-.scroll-lock-indicator.visible{display:block}
-.scroll-lock-btn{font-family:'IBM Plex Mono',monospace;font-size:.7em;background:var(--bg-input);border:1px solid var(--accent);color:var(--accent);padding:4px 14px;border-radius:12px;cursor:pointer;transition:all .2s}
-.scroll-lock-btn:hover{background:var(--accent);color:#fff}
-
-.msg{max-width:85%;padding:14px 18px;border-radius:12px;line-height:1.65;animation:fadeIn .25s ease;word-wrap:break-word}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.msg.user{background:var(--bg-msg-user);align-self:flex-end;border:1px solid rgba(37,99,235,.15);border-bottom-right-radius:4px;color:var(--text-bright)}
-.msg.assistant{background:var(--bg-msg-ai);align-self:flex-start;border:1px solid var(--border);border-bottom-left-radius:4px}
-.role-label{font-family:'IBM Plex Mono',monospace;font-size:.65em;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;display:block}
-.msg.user .role-label{color:var(--accent)}
-.msg.assistant .role-label{color:var(--accent-warm)}
+.msg{max-width:86%;display:flex;flex-direction:column;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.msg.assistant{align-self:flex-start;align-items:flex-start}
+.msg-head{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.62em;
+  text-transform:uppercase;letter-spacing:1.5px}
+.msg.user .role{color:var(--accent)}
+.msg.assistant .role{color:var(--warm,var(--accent-2))}
+.msg-bubble{padding:11px 15px;border-radius:11px;line-height:1.65;word-wrap:break-word;overflow-wrap:anywhere;width:100%}
+.msg.user .msg-bubble{background:var(--bg-elev);border:1px solid var(--border);border-bottom-right-radius:4px;color:var(--fg)}
+.msg.assistant .msg-bubble{background:var(--bg-soft);border:1px solid var(--border-soft);border-bottom-left-radius:4px}
 .msg-text{white-space:pre-wrap}
-.msg .meta{font-family:'IBM Plex Mono',monospace;font-size:.65em;color:var(--text-dim);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap}
-.meta-item{white-space:nowrap}.meta-item.good{color:var(--accent-green)}.meta-item.warn{color:var(--accent-yellow)}
-.typing-indicator{display:inline-flex;gap:4px;padding:4px 0}
-.typing-indicator span{width:6px;height:6px;background:var(--text-dim);border-radius:50%;animation:typingDot 1.4s infinite}
-.typing-indicator span:nth-child(2){animation-delay:.2s}
-.typing-indicator span:nth-child(3){animation-delay:.4s}
-@keyframes typingDot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+.msg-text.md{white-space:normal}
+.msg-text.md p{margin:.5em 0}
+.msg-text.md p:first-child{margin-top:0}.msg-text.md p:last-child{margin-top:0;margin-bottom:0}
+.msg-text.md h1,.msg-text.md h2,.msg-text.md h3{margin:.7em 0 .35em;line-height:1.3;color:var(--fg)}
+.msg-text.md h1{font-size:1.25em}.msg-text.md h2{font-size:1.15em}.msg-text.md h3{font-size:1.05em}
+.msg-text.md ul,.msg-text.md ol{margin:.4em 0 .4em 1.4em}
+.msg-text.md li{margin:.18em 0}
+.msg-text.md a{color:var(--accent);text-decoration:underline}
+.msg-text.md blockquote{border-left:3px solid var(--border);padding-left:12px;margin:.5em 0;color:var(--fg-dim)}
+.msg-text.md hr{border:none;border-top:1px solid var(--border);margin:.8em 0}
+.msg-text.md code.inline{background:var(--bg-inset);border:1px solid var(--border-soft);border-radius:4px;
+  padding:.5px 4px;font-size:.92em;color:var(--cyan)}
+.codeblock{margin:.6em 0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg-inset)}
+.codeblock-head{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;
+  background:var(--bg-elev);border-bottom:1px solid var(--border);font-size:.7em;color:var(--fg-muted)}
+.codeblock-copy{font-size:.92em;background:none;border:none;color:var(--fg-muted);padding:2px 4px}
+.codeblock-copy:hover{color:var(--accent)}
+.codeblock pre{padding:10px 12px;overflow-x:auto;font-size:.92em;line-height:1.5;color:var(--fg)}
+.msg-actions{display:flex;gap:4px;margin-top:5px;opacity:0;transition:opacity .15s}
+.msg:hover .msg-actions{opacity:1}
+.act-btn{font-size:.62em;background:none;border:1px solid var(--border);color:var(--fg-muted);
+  padding:2px 7px;border-radius:4px;transition:all .15s}
+.act-btn:hover{border-color:var(--accent);color:var(--accent)}
+.meta{font-size:.62em;color:var(--fg-muted);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+.meta .good{color:var(--ok)}.meta .warn{color:var(--warn)}
 
-/* Thinking blocks in chat */
-.thinking-block{background:var(--bg-thinking);border:1px solid var(--border-thinking);border-left:3px solid var(--accent-think);border-radius:6px;margin:8px 0;overflow:hidden}
-.thinking-header{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;user-select:none;background:rgba(88,166,255,.05);transition:background .15s}
-.thinking-header:hover{background:rgba(88,166,255,.1)}
-.thinking-label{font-family:'IBM Plex Mono',monospace;font-size:.7em;font-weight:600;color:var(--accent-think);text-transform:uppercase;letter-spacing:.5px;flex:1}
-.think-inline-stats{font-weight:400;color:var(--text-dim);text-transform:none;letter-spacing:0;font-size:.9em}
-.thinking-chevron{font-size:.7em;color:var(--text-dim);transition:transform .2s}
-.thinking-chevron.collapsed{transform:rotate(-90deg)}
-.thinking-body{padding:10px 14px;font-size:calc(var(--font-size) - 1px);color:var(--text-dim);line-height:1.5;font-family:'IBM Plex Mono',monospace;white-space:pre-wrap;word-wrap:break-word;border-top:1px solid var(--border-thinking);display:none;max-height:300px;overflow-y:auto}
-.thinking-body.open{display:block}
-.thinking-block.compact{border-left-width:2px;margin:4px 0}
-.thinking-block.compact .thinking-header{padding:5px 10px}
-.thinking-block.compact .thinking-label{font-size:.62em}
+.typing{display:inline-flex;gap:4px;padding:5px 0}
+.typing span{width:6px;height:6px;background:var(--fg-muted);border-radius:50%;animation:tdot 1.4s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 
-.input-area{flex-shrink:0;padding:12px 24px 16px;border-top:1px solid var(--border);background:var(--bg-panel)}
-.params-bar{display:flex;gap:14px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
-.param-group{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:.7em;color:var(--text-dim)}
-.param-group label{cursor:pointer;user-select:none}
-.param-group label:hover{color:var(--text)}
-.param-group input[type="range"]{width:70px;accent-color:var(--accent);cursor:pointer}
-.param-group input[type="number"]{width:52px;background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:1em;padding:2px 4px;border-radius:4px;outline:none;text-align:center}
-.param-group input[type="number"]:focus{border-color:var(--accent)}
+/* thinking block */
+.think{background:var(--bg-inset);border:1px solid var(--border);border-left:2px solid var(--cyan);
+  border-radius:var(--radius);margin:7px 0;overflow:hidden}
+.think-head{display:flex;align-items:center;gap:7px;padding:6px 11px;cursor:pointer;user-select:none;
+  background:color-mix(in srgb,var(--cyan) 6%,transparent);transition:background .15s}
+.think-head:hover{background:color-mix(in srgb,var(--cyan) 11%,transparent)}
+.think-label{font-size:.66em;font-weight:600;color:var(--cyan);text-transform:uppercase;letter-spacing:.5px;flex:1}
+.think-stats{font-weight:400;color:var(--fg-muted);text-transform:none;letter-spacing:0}
+.think-chev{font-size:.62em;color:var(--fg-muted);transition:transform .2s}
+.think-chev.collapsed{transform:rotate(-90deg)}
+.think-body{padding:9px 13px;font-size:.92em;color:var(--fg-dim);line-height:1.55;white-space:pre-wrap;
+  word-wrap:break-word;border-top:1px solid var(--border);display:none;max-height:320px;overflow-y:auto}
+.think-body.open{display:block}
+
+/* ============================================================ INPUT */
+.input-area{flex-shrink:0;padding:11px 26px 15px;border-top:1px solid var(--border);background:var(--bg-soft)}
+.params-bar{display:flex;gap:13px;margin-bottom:9px;flex-wrap:wrap;align-items:center}
+.pg{display:flex;align-items:center;gap:5px;font-size:.68em;color:var(--fg-muted)}
+.pg label{cursor:pointer;user-select:none}.pg label:hover{color:var(--fg)}
+.pg input[type=range]{width:62px;accent-color:var(--accent);cursor:pointer}
+.pg input[type=number],.pg input[type=text]{width:50px;background:var(--bg-inset);border:1px solid var(--border);
+  color:var(--fg);font-size:1em;padding:2px 4px;border-radius:4px;outline:none;text-align:center}
+.pg input:focus{border-color:var(--accent)}
+.pg select{background:var(--bg-inset);border:1px solid var(--border);color:var(--fg);font-size:1em;
+  padding:2px 5px;border-radius:4px;outline:none;cursor:pointer}
+.pg.think-toggle label.on{color:var(--cyan)}
+.ctx-meter{display:flex;align-items:center;gap:6px;font-size:.66em;color:var(--fg-muted)}
+.ctx-bar{width:80px;height:4px;background:var(--bg-inset);border-radius:2px;overflow:hidden}
+.ctx-fill{height:100%;background:var(--accent);transition:width .3s,background .3s}
 .input-row{display:flex;gap:10px;align-items:flex-end}
-.input-wrapper{flex:1}
-.input-wrapper textarea{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text-bright);font-family:'DM Sans',sans-serif;resize:none;outline:none;min-height:46px;max-height:200px;line-height:1.5;transition:border-color .2s}
-.input-wrapper textarea:focus{border-color:var(--accent)}
-.input-wrapper textarea::placeholder{color:var(--text-dim)}
-.send-btn{width:46px;height:46px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:1.2em;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.send-btn:hover{background:#4c8fef;transform:scale(1.05)}
-.send-btn.stop{background:var(--accent-red)}
-.send-btn.stop:hover{background:#e5443d}
-.input-hints{display:flex;gap:16px;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:.63em;color:var(--text-dim)}
-.input-hints kbd{background:var(--bg-input);border:1px solid var(--border);padding:0 4px;border-radius:3px}
+.input-wrap{flex:1}
+.input-wrap textarea{width:100%;background:var(--bg-inset);border:1px solid var(--border);border-radius:10px;
+  padding:11px 15px;color:var(--fg);resize:none;outline:none;min-height:46px;max-height:240px;line-height:1.5;
+  transition:border-color .15s}
+.input-wrap textarea:focus{border-color:var(--accent)}
+.input-wrap textarea::placeholder{color:var(--fg-muted)}
+.send-btn{width:46px;height:46px;border-radius:10px;background:var(--accent);border:none;color:var(--bg);
+  font-size:1.1em;transition:all .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn:hover{filter:brightness(1.1);transform:scale(1.04)}
+.send-btn.stop{background:var(--err)}
+.input-hints{display:flex;gap:14px;margin-top:6px;font-size:.62em;color:var(--fg-muted)}
+.input-hints kbd{background:var(--bg-inset);border:1px solid var(--border);padding:0 4px;border-radius:3px}
 
-.debug-tabs{display:flex;background:var(--bg-panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
-.debug-tab{font-family:'IBM Plex Mono',monospace;font-size:var(--debug-font-size);padding:10px 12px;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;flex-shrink:0}
-.debug-tab:hover{color:var(--text)}
-.debug-tab.active{color:var(--accent-warm);border-bottom-color:var(--accent-warm)}
-.debug-tab.has-thinking{color:var(--accent-think)}
-.debug-tab.has-thinking.active{color:var(--accent-think);border-bottom-color:var(--accent-think)}
-.debug-content{flex:1;overflow-y:auto;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:var(--debug-font-size);line-height:1.7;color:var(--text-dim);min-height:0}
-.debug-content::-webkit-scrollbar{width:5px}
-.debug-content::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:3px}
-.entry{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(27,36,48,.5)}
+.scroll-resume{display:none;position:sticky;bottom:0;text-align:center;padding:6px;z-index:5;
+  background:linear-gradient(transparent,var(--bg) 80%)}
+.scroll-resume.show{display:block}
+.scroll-resume button{font-size:.7em;background:var(--bg-inset);border:1px solid var(--accent);color:var(--accent);
+  padding:4px 14px;border-radius:12px}
+
+/* ============================================================ DEBUG PANEL */
+.debug-tabs{display:flex;background:var(--bg-soft);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.debug-tab{font-size:var(--debug-fs);padding:9px 11px;color:var(--fg-muted);border-bottom:2px solid transparent;
+  transition:all .15s;white-space:nowrap;flex-shrink:0;cursor:pointer}
+.debug-tab:hover{color:var(--fg)}
+.debug-tab.active{color:var(--accent-2);border-bottom-color:var(--accent-2)}
+.debug-tab.has-think{color:var(--cyan)}
+.debug-tab.has-think.active{border-bottom-color:var(--cyan)}
+.debug-content{flex:1;overflow-y:auto;padding:13px;font-size:var(--debug-fs);line-height:1.7;color:var(--fg-dim);min-height:0}
+.entry{margin-bottom:13px;padding-bottom:13px;border-bottom:1px solid var(--border-soft)}
 .entry:last-child{border-bottom:none}
-.timestamp{color:var(--text-dim);font-size:.85em}
-.label{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.85em;margin-right:4px}
-.label.req{background:rgba(88,166,255,.12);color:var(--accent)}
-.label.res{background:rgba(63,185,80,.12);color:var(--accent-green)}
-.label.err{background:rgba(248,81,73,.12);color:var(--accent-red)}
-.label.sys{background:rgba(188,140,255,.12);color:var(--accent-purple)}
-.label.think{background:rgba(108,168,216,.12);color:var(--accent-think)}
-.debug-content pre{background:rgba(13,17,23,.5);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;color:var(--text);font-size:.92em;max-height:400px;overflow-y:auto}
-.token-stream{display:flex;flex-wrap:wrap;gap:1px}
-.token{padding:1px 2px;border-radius:2px;background:rgba(126,231,135,.06);border:1px solid rgba(126,231,135,.08);color:var(--text-code);font-size:.88em;animation:tokenFade .15s;white-space:pre;cursor:default}
-.token:hover{background:rgba(126,231,135,.15);border-color:rgba(126,231,135,.3)}
-.token.think-token{background:rgba(108,168,216,.08);border-color:rgba(108,168,216,.12);color:var(--accent-think)}
-.token.think-token:hover{background:rgba(108,168,216,.2);border-color:rgba(108,168,216,.3)}
-.token-sep{width:100%;height:1px;background:var(--border);margin:8px 0}
-@keyframes tokenFade{from{background:rgba(126,231,135,.25)}}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.stat-box{background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
-.stat-box .stat-val{font-size:1.5em;font-weight:600;color:var(--text-bright)}
-.stat-box .stat-label{font-size:.78em;color:var(--text-dim);margin-top:2px}
+.ts{color:var(--fg-muted);font-size:.85em}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.85em;margin-right:4px}
+.tag.req{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.tag.res{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+.tag.err{background:color-mix(in srgb,var(--err) 14%,transparent);color:var(--err)}
+.tag.sys{background:color-mix(in srgb,var(--accent-2) 14%,transparent);color:var(--accent-2)}
+.debug-content pre{background:var(--bg-soft);border:1px solid var(--border-soft);border-radius:var(--radius);
+  padding:9px;margin-top:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;color:var(--fg);
+  font-size:.92em;max-height:380px;overflow-y:auto}
+.tokens{display:flex;flex-wrap:wrap;gap:1px}
+.tok{padding:1px 2px;border-radius:2px;background:color-mix(in srgb,var(--ok) 7%,transparent);
+  border:1px solid color-mix(in srgb,var(--ok) 9%,transparent);color:var(--ok);font-size:.88em;white-space:pre;cursor:default}
+.tok:hover{background:color-mix(in srgb,var(--ok) 18%,transparent)}
+.tok.think{background:color-mix(in srgb,var(--cyan) 8%,transparent);border-color:color-mix(in srgb,var(--cyan) 12%,transparent);color:var(--cyan)}
+.tok-sep{width:100%;height:1px;background:var(--border);margin:8px 0}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:13px}
+.stat-box{background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius);padding:11px;text-align:center}
+.stat-val{font-size:1.5em;font-weight:600;color:var(--fg)}
+.stat-label{font-size:.78em;color:var(--fg-muted);margin-top:2px}
 .perf-bar{height:4px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden}
 .perf-bar .fill{height:100%;border-radius:2px;transition:width .3s}
-.msg-entry{padding:6px 8px;border-radius:4px;margin-bottom:3px;cursor:pointer;transition:background .15s;border-left:3px solid transparent}
-.msg-entry:hover{background:rgba(255,255,255,.03)}
+.msg-entry{padding:6px 8px;border-radius:4px;margin-bottom:3px;cursor:pointer;border-left:3px solid transparent}
+.msg-entry:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
 .msg-entry.role-user{border-left-color:var(--accent)}
-.msg-entry.role-assistant{border-left-color:var(--accent-warm)}
-.msg-entry.role-system{border-left-color:var(--accent-purple)}
+.msg-entry.role-assistant{border-left-color:var(--accent-2)}
+.msg-entry.role-system{border-left-color:var(--cyan)}
 .me-role{font-weight:600;font-size:.85em}
-.me-role.user{color:var(--accent)}.me-role.assistant{color:var(--accent-warm)}.me-role.system{color:var(--accent-purple)}
-.me-preview{color:var(--text-dim);font-size:.88em}
+.me-role.user{color:var(--accent)}.me-role.assistant{color:var(--accent-2)}.me-role.system{color:var(--cyan)}
+.me-prev{color:var(--fg-muted);font-size:.88em}
 .me-full{display:none;margin-top:6px}
-.msg-entry.expanded .me-full{display:block}
-.msg-entry.expanded .me-preview{display:none}
-.timeline-entry{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;padding-left:12px;border-left:2px solid var(--border)}
-.te-time{font-size:.82em;color:var(--text-dim);min-width:65px;flex-shrink:0}
-.te-event{color:var(--text);font-size:.88em}
+.msg-entry.expanded .me-full{display:block}.msg-entry.expanded .me-prev{display:none}
+.tl-entry{display:flex;gap:8px;margin-bottom:8px;padding-left:11px;border-left:2px solid var(--border)}
+.tl-time{font-size:.82em;color:var(--fg-muted);min-width:62px;flex-shrink:0}
+.tl-event{color:var(--fg);font-size:.88em}
+.think-entry{margin-bottom:14px;padding:11px;background:var(--bg-inset);border:1px solid var(--border);
+  border-left:3px solid var(--cyan);border-radius:var(--radius)}
+.think-entry-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.think-entry-label{font-size:.78em;color:var(--cyan);font-weight:600}
+.think-entry-meta{font-size:.72em;color:var(--fg-muted)}
+.think-entry-body{white-space:pre-wrap;word-wrap:break-word;color:var(--fg);font-size:.88em;line-height:1.6;
+  max-height:380px;overflow-y:auto;padding:8px;background:var(--bg-soft);border-radius:4px}
+.empty{color:var(--fg-muted);text-align:center;padding:40px 20px;line-height:1.8}
+.empty .icon{font-size:2em;margin-bottom:12px;opacity:.4}
 
-/* Thinking debug tab styles */
-.think-entry{margin-bottom:16px;padding:12px;background:var(--bg-thinking);border:1px solid var(--border-thinking);border-left:3px solid var(--accent-think);border-radius:6px}
-.think-entry-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.think-entry-label{font-size:.78em;color:var(--accent-think);font-weight:600}
-.think-entry-meta{font-size:.72em;color:var(--text-dim)}
-.think-entry-content{white-space:pre-wrap;word-wrap:break-word;color:var(--text);font-size:.88em;line-height:1.6;max-height:400px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.2);border-radius:4px}
-.think-empty{color:var(--text-dim);text-align:center;padding:40px 20px}
-.think-empty .icon{font-size:2em;margin-bottom:12px;opacity:.5}
-.think-stats{display:flex;gap:16px;padding:10px;background:var(--bg-panel);border:1px solid var(--border);border-radius:6px;margin-bottom:14px;font-size:.82em}
-.think-stats span{color:var(--text-dim)}
-.think-stats .val{color:var(--accent-think);font-weight:500}
-
-.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
-.settings-overlay.open{display:flex}
-.settings-panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:28px;width:420px;max-height:80vh;overflow-y:auto}
-.settings-panel h3{font-family:'IBM Plex Mono',monospace;font-size:.9em;color:var(--text-bright);margin-bottom:20px}
-.setting-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-family:'IBM Plex Mono',monospace;font-size:.78em;color:var(--text)}
-.setting-row label{color:var(--text-dim)}
-.setting-row input[type="range"]{width:120px;accent-color:var(--accent)}
-.setting-row .sval{min-width:36px;text-align:right;color:var(--text)}
-.setting-row select{background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:1em;padding:3px 6px;border-radius:4px;outline:none}
-.settings-close{font-family:'IBM Plex Mono',monospace;font-size:.78em;background:var(--accent);border:none;color:#fff;padding:6px 18px;border-radius:6px;cursor:pointer;margin-top:12px;display:block;width:100%}
-.settings-close:hover{background:#4c8fef}
-.settings-reset{font-family:'IBM Plex Mono',monospace;font-size:.72em;background:none;border:1px solid var(--border);color:var(--text-dim);padding:5px 14px;border-radius:6px;cursor:pointer;margin-top:8px;display:block;width:100%;transition:all .2s}
-.settings-reset:hover{border-color:var(--accent-red);color:var(--accent-red)}
+/* ============================================================ MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;padding:24px;
+  width:460px;max-height:84vh;overflow-y:auto}
+.modal h3{font-size:.92em;color:var(--fg);margin-bottom:18px;letter-spacing:.5px}
+.modal h4{font-size:.72em;color:var(--fg-muted);text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px}
+.row{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;font-size:.78em;gap:10px}
+.row label{color:var(--fg-dim)}
+.row input[type=range]{width:120px;accent-color:var(--accent)}
+.row input[type=text],.row input[type=number]{background:var(--bg-inset);border:1px solid var(--border);color:var(--fg);
+  font-size:.95em;padding:4px 7px;border-radius:4px;outline:none}
+.row input:focus{border-color:var(--accent)}
+.row .sval{min-width:42px;text-align:right;color:var(--fg)}
+.theme-grid,.font-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:8px}
+.theme-chip,.font-chip{border:1px solid var(--border);border-radius:var(--radius);padding:8px 6px;text-align:center;
+  font-size:.7em;color:var(--fg-dim);transition:all .15s;background:var(--bg-inset)}
+.theme-chip:hover,.font-chip:hover{border-color:var(--accent);color:var(--fg)}
+.theme-chip.sel,.font-chip.sel{border-color:var(--accent);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.swatch{display:flex;gap:3px;justify-content:center;margin-bottom:5px}
+.swatch i{width:9px;height:9px;border-radius:50%;display:block}
+.btn-primary{font-size:.8em;background:var(--accent);border:none;color:var(--bg);padding:7px 18px;
+  border-radius:var(--radius);margin-top:14px;display:block;width:100%;font-weight:500}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-ghost{font-size:.72em;background:none;border:1px solid var(--border);color:var(--fg-muted);
+  padding:6px 14px;border-radius:var(--radius);margin-top:8px;display:block;width:100%;transition:all .15s}
+.btn-ghost:hover{border-color:var(--err);color:var(--err)}
+.session-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;
+  background:var(--bg-inset);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;font-size:.78em}
+.session-item:hover{border-color:var(--accent)}
+.session-meta{color:var(--fg-muted);font-size:.85em}
+.session-load{flex:1;cursor:pointer}
+.session-del{color:var(--fg-muted);padding:2px 6px;border:none;background:none}
+.session-del:hover{color:var(--err)}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="topbar">
-    <span class="logo">LLM-DYNO</span><div class="sep"></div>
+    <span class="logo">LLM<b>·</b>DYNO</span><div class="sep"></div>
     <select class="model-select" id="modelSelect"></select>
-    <button class="top-btn" id="refreshModels">&#x21bb;</button>
-    <span class="status-dot disconnected" id="statusDot"></span>
+    <button class="icon-btn" id="refreshModels" title="Refresh models">&#x21bb;</button>
+    <span class="status-dot" id="statusDot"></span>
     <span class="status-label" id="statusLabel">...</span>
     <div class="spacer"></div>
-    <button class="top-btn" id="clearBtn">clear</button>
+    <button class="top-btn" id="newBtn" title="New chat">+ new</button>
+    <button class="top-btn" id="sessionsBtn">sessions</button>
     <button class="top-btn" id="exportBtn">export</button>
-    <button class="top-btn" id="settingsBtn">&#x2699; settings</button>
+    <button class="top-btn" id="settingsBtn">&#x2699;</button>
     <button class="top-btn active" id="debugToggle">&#x25E7; debug</button>
   </div>
 
   <div class="chat-col">
-    <div class="system-prompt-bar">
-      <span class="sp-label">SYS</span>
-      <textarea id="systemPromptInput" rows="1">You are a helpful assistant.</textarea>
-      <button class="sp-toggle" id="spToggle">ON</button>
+    <div class="sys-bar">
+      <span class="sys-label">sys</span>
+      <textarea id="sysInput" rows="1" spellcheck="false">You are a helpful assistant.</textarea>
+      <button class="mini-btn" id="sysToggle">ON</button>
     </div>
     <div class="chat-area" id="chatArea">
-      <div class="scroll-lock-indicator" id="scrollLockInd">
-        <button class="scroll-lock-btn" id="scrollLockBtn">&#x2193; Resume auto-scroll</button>
+      <div class="chat-empty" id="chatEmpty">
+        <div class="big">&#x25E7;</div>
+        <div>A workbench for your local models.</div>
+        <div style="font-size:.85em;margin-top:8px">Pick a model, tune the params, and talk.<br>
+        <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> newline · <kbd>Esc</kbd> stop · <kbd>↑</kbd> edit last</div>
       </div>
+      <div class="scroll-resume" id="scrollResume"><button id="scrollResumeBtn">&#x2193; resume auto-scroll</button></div>
     </div>
     <div class="input-area">
-      <div class="params-bar">
-        <div class="param-group"><label>temp</label><input type="range" min="0" max="200" value="70" id="tempSlider"><input type="number" min="0" max="2" step="0.1" value="0.7" id="tempInput"></div>
-        <div class="param-group"><label>max_tok</label><input type="number" min="1" max="32768" value="1024" id="maxTokInput"></div>
-        <div class="param-group"><label>top_p</label><input type="range" min="0" max="100" value="90" id="topPSlider"><input type="number" min="0" max="1" step="0.05" value="0.9" id="topPInput"></div>
-        <div class="param-group"><label>top_k</label><input type="number" min="0" max="200" value="40" id="topKInput"></div>
-        <div class="param-group"><label>rep_pen</label><input type="number" min="0" max="2" step="0.05" value="1.1" id="repeatPenInput"></div>
-        <div class="param-group"><label>seed</label><input type="number" min="-1" max="999999" value="-1" id="seedInput" title="-1 = random"></div>
+      <div class="params-bar" id="paramsBar">
+        <div class="pg"><label title="Sampling preset">preset</label>
+          <select id="presetSelect">
+            <option value="custom">custom</option>
+            <option value="precise">precise</option>
+            <option value="balanced" selected>balanced</option>
+            <option value="creative">creative</option>
+            <option value="wild">wild</option>
+          </select></div>
+        <div class="pg"><label>temp</label><input type="range" min="0" max="200" value="70" id="tempSlider"><input type="number" min="0" max="2" step="0.05" value="0.7" id="tempInput"></div>
+        <div class="pg"><label>top_p</label><input type="range" min="0" max="100" value="90" id="topPSlider"><input type="number" min="0" max="1" step="0.05" value="0.9" id="topPInput"></div>
+        <div class="pg"><label>top_k</label><input type="number" min="0" max="200" value="40" id="topKInput"></div>
+        <div class="pg"><label>min_p</label><input type="number" min="0" max="1" step="0.01" value="0" id="minPInput"></div>
+        <div class="pg"><label>rep</label><input type="number" min="0" max="2" step="0.05" value="1.1" id="repInput"></div>
+        <div class="pg"><label>max_tok</label><input type="number" min="1" max="131072" value="2048" id="maxTokInput"></div>
+        <div class="pg"><label>ctx</label><input type="number" min="512" max="131072" step="512" value="4096" id="ctxInput"></div>
+        <div class="pg"><label>seed</label><input type="number" min="-1" max="999999999" value="-1" id="seedInput" title="-1 = random"></div>
+        <div class="pg think-toggle"><label id="thinkLabel" title="Request reasoning (Ollama think param)">think</label><input type="checkbox" id="thinkToggle"></div>
+        <div class="ctx-meter" title="Last prompt vs context window"><span id="ctxText">0/4096</span><div class="ctx-bar"><div class="ctx-fill" id="ctxFill" style="width:0"></div></div></div>
       </div>
       <div class="input-row">
-        <div class="input-wrapper"><textarea id="userInput" placeholder="Talk to the local LLM..." rows="1"></textarea></div>
+        <div class="input-wrap"><textarea id="userInput" placeholder="Talk to the local model..." rows="1" spellcheck="false"></textarea></div>
         <button class="send-btn" id="sendBtn">&#x25B6;</button>
       </div>
-      <div class="input-hints"><span><kbd>Enter</kbd> send</span><span><kbd>Shift+Enter</kbd> newline</span><span><kbd>Esc</kbd> stop</span><span>seed -1 = random</span></div>
+      <div class="input-hints"><span><kbd>Enter</kbd> send</span><span><kbd>Shift+Enter</kbd> newline</span><span><kbd>Esc</kbd> stop</span><span><kbd>Ctrl+R</kbd> regenerate</span><span><kbd>↑</kbd> edit last</span></div>
     </div>
   </div>
 
@@ -238,840 +399,637 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;hei
   </div>
 </div>
 
-<div class="settings-overlay" id="settingsOverlay">
-  <div class="settings-panel">
-    <h3>LLM-Dyno Settings</h3>
-    <div class="setting-row"><label>Ollama URL</label><input type="text" id="setOllamaUrl" value="http://localhost:11434" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.9em;padding:3px 6px;border-radius:4px;outline:none;width:220px"></div>
-    <div class="setting-row"><label>Chat font size</label><input type="range" min="10" max="22" value="14" id="setChatFont"><span class="sval" id="setChatFontVal">14px</span></div>
-    <div class="setting-row"><label>Debug font size</label><input type="range" min="9" max="16" value="11" id="setDebugFont"><span class="sval" id="setDebugFontVal">11.5px</span></div>
-    <div class="setting-row"><label>Debug panel width</label><input type="range" min="280" max="700" value="520" id="setDebugWidth"><span class="sval" id="setDebugWidthVal">520px</span></div>
-    <div class="setting-row"><label>Auto-scroll threshold</label><input type="range" min="20" max="200" value="80" id="setScrollThresh"><span class="sval" id="setScrollThreshVal">80px</span></div>
-    <button class="settings-close" id="settingsClose">Done</button>
-    <button class="settings-reset" id="settingsReset">Reset to defaults</button>
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <h3>Settings</h3>
+    <h4>Theme</h4>
+    <div class="theme-grid" id="themeGrid"></div>
+    <div class="row"><label>Scanlines (CRT)</label><input type="checkbox" id="setScanlines"></div>
+    <h4>Font</h4>
+    <div class="font-grid" id="fontGrid"></div>
+    <div class="row"><label>Ligatures</label><input type="checkbox" id="setLigatures" checked></div>
+    <h4>Connection</h4>
+    <div class="row"><label>Ollama URL</label><input type="text" id="setOllamaUrl" value="http://localhost:11434" style="width:220px"></div>
+    <h4>Display</h4>
+    <div class="row"><label>Chat font size</label><input type="range" min="11" max="20" value="13.5" step="0.5" id="setChatFont"><span class="sval" id="setChatFontVal">13.5px</span></div>
+    <div class="row"><label>Debug font size</label><input type="range" min="9" max="16" value="11.5" step="0.5" id="setDebugFont"><span class="sval" id="setDebugFontVal">11.5px</span></div>
+    <div class="row"><label>Debug width</label><input type="range" min="320" max="720" value="480" id="setDebugWidth"><span class="sval" id="setDebugWidthVal">480px</span></div>
+    <div class="row"><label>Render markdown</label><input type="checkbox" id="setMarkdown" checked></div>
+    <button class="btn-primary" id="settingsClose">Done</button>
+    <button class="btn-ghost" id="settingsReset">Reset to defaults</button>
+  </div>
+</div>
+
+<!-- SESSIONS MODAL -->
+<div class="overlay" id="sessionsOverlay">
+  <div class="modal">
+    <h3>Sessions</h3>
+    <div class="row" style="margin-bottom:14px">
+      <input type="text" id="sessionName" placeholder="session name..." style="flex:1">
+      <button class="top-btn" id="saveSessionBtn" style="border-color:var(--accent);color:var(--accent)">save current</button>
+    </div>
+    <div id="sessionList"></div>
+    <button class="btn-primary" id="sessionsClose">Done</button>
   </div>
 </div>
 
 <script>
-// -------------------------------------------------------
-//  LLM-Dyno  -  Local Ollama Chat Console
-//  Single-file HTML app. No build step, no deps.
-//  Point it at any Ollama instance and go.
-// -------------------------------------------------------
+// =====================================================================
+//  LLM-Dyno - Local model workbench. Single file, no deps.
+//  Talks to any Ollama instance via /api/chat (streaming).
+// =====================================================================
 
-const DEFAULTS = {
-  ollamaUrl: 'http://localhost:11434',
-  chatFont: 14,
-  debugFont: 11.5,
-  debugWidth: 520,
-  scrollThreshold: 80,
-  debugOpen: true
+const $ = id => document.getElementById(id);
+
+// ---- THEMES & FONTS ----
+const THEMES = [
+  { id:'tokyonight', name:'Tokyo Night', sw:['#7aa2f7','#bb9af7','#9ece6a','#f7768e'] },
+  { id:'catppuccin', name:'Catppuccin', sw:['#89b4fa','#cba6f7','#a6e3a1','#f38ba8'] },
+  { id:'gruvbox',    name:'Gruvbox',    sw:['#83a598','#d3869b','#b8bb26','#fb4934'] },
+  { id:'nord',       name:'Nord',       sw:['#88c0d0','#b48ead','#a3be8c','#bf616a'] },
+  { id:'latte',      name:'Latte (light)', sw:['#1e66f5','#8839ef','#40a02b','#d20f39'] },
+  { id:'amber',      name:'Amber CRT',  sw:['#ffcc33','#ff9500','#c5d92e','#ff5555'] },
+];
+const FONTS = [
+  { id:"'IBM Plex Mono'", name:'IBM Plex' },
+  { id:"'JetBrains Mono'", name:'JetBrains' },
+  { id:"'Fira Code'", name:'Fira Code' },
+  { id:"'Space Mono'", name:'Space Mono' },
+];
+const FONT_STACK = id => id + ",ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace";
+
+const PRESETS = {
+  precise:  { temp:0.2, top_p:0.7, top_k:20, rep:1.05 },
+  balanced: { temp:0.7, top_p:0.9, top_k:40, rep:1.1 },
+  creative: { temp:1.1, top_p:0.95, top_k:80, rep:1.15 },
+  wild:     { temp:1.6, top_p:1.0, top_k:120, rep:1.2 },
 };
 
-const STORAGE_KEY = 'llm-dyno-settings';
+const DEFAULTS = {
+  ollamaUrl:'http://localhost:11434', theme:'tokyonight', font:"'IBM Plex Mono'",
+  ligatures:true, scanlines:false, markdown:true,
+  chatFont:13.5, debugFont:11.5, debugWidth:480, scrollThreshold:90, debugOpen:true,
+};
+const SK = 'llm-dyno-settings';
+const SESS_KEY = 'llm-dyno-sessions';
 
-function loadSettings() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return Object.assign({}, DEFAULTS, JSON.parse(raw));
-  } catch (e) {}
-  return Object.assign({}, DEFAULTS);
-}
-
-function saveSettings(s) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {}
-}
-
+function loadSettings(){ try{ const r=localStorage.getItem(SK); if(r) return Object.assign({},DEFAULTS,JSON.parse(r)); }catch(e){} return {...DEFAULTS}; }
+function saveSettings(){ try{ localStorage.setItem(SK,JSON.stringify(settings)); }catch(e){} }
 let settings = loadSettings();
 
-let OLLAMA_BASE = settings.ollamaUrl;
+let OLLAMA = settings.ollamaUrl;
 let messages = [];
-let systemPromptEnabled = true;
+let sysEnabled = true;
 let currentAbort = null;
 let debugTab = 'stream';
-let tokenLog = [];
-let rawLog = [];
-let timelineLog = [];
-let thinkingLog = []; // Stores thinking blocks: {content, startTime, endTime, requestIndex}
+let tokenLog = [], rawLog = [], timelineLog = [], thinkingLog = [];
 let currentModelInfo = null;
 let isGenerating = false;
+let lastPromptTokens = 0;
 let stats = { totalTokens:0, totalPromptTokens:0, totalTime:0, requests:0, perRequest:[] };
 let userScrolledUp = false;
 let scrollThreshold = settings.scrollThreshold;
 
-const $ = id => document.getElementById(id);
-const chatArea = $('chatArea');
-const userInput = $('userInput');
-const sendBtn = $('sendBtn');
-const modelSelect = $('modelSelect');
-const debugContent = $('debugContent');
-const statusDot = $('statusDot');
-const statusLabel = $('statusLabel');
-const sysInput = $('systemPromptInput');
-const scrollInd = $('scrollLockInd');
-const scrollBtn = $('scrollLockBtn');
+const chatArea=$('chatArea'), userInput=$('userInput'), sendBtn=$('sendBtn'),
+  modelSelect=$('modelSelect'), debugContent=$('debugContent'), statusDot=$('statusDot'),
+  statusLabel=$('statusLabel'), sysInput=$('sysInput'), scrollResume=$('scrollResume');
 
-function applySettings(s) {
-  OLLAMA_BASE = s.ollamaUrl;
-  scrollThreshold = s.scrollThreshold;
-
-  document.documentElement.style.setProperty('--font-size', s.chatFont + 'px');
-  document.documentElement.style.setProperty('--debug-font-size', s.debugFont + 'px');
-  document.documentElement.style.setProperty('--debug-width', s.debugWidth + 'px');
-
-  $('setOllamaUrl').value = s.ollamaUrl;
-  $('setChatFont').value = s.chatFont;
-  $('setChatFontVal').textContent = s.chatFont + 'px';
-  $('setDebugFont').value = Math.round(s.debugFont);
-  $('setDebugFontVal').textContent = s.debugFont + 'px';
-  $('setDebugWidth').value = s.debugWidth;
-  $('setDebugWidthVal').textContent = s.debugWidth + 'px';
-  $('setScrollThresh').value = s.scrollThreshold;
-  $('setScrollThreshVal').textContent = s.scrollThreshold + 'px';
-
-  if (!s.debugOpen) {
-    $('app').classList.add('debug-closed');
-    $('debugToggle').classList.remove('active');
-  } else {
-    $('app').classList.remove('debug-closed');
-    $('debugToggle').classList.add('active');
-  }
+// ---- APPLY SETTINGS ----
+function applySettings(){
+  const r=document.documentElement;
+  r.setAttribute('data-theme', settings.theme);
+  if(settings.scanlines) r.setAttribute('data-scanlines','1'); else r.removeAttribute('data-scanlines');
+  r.style.setProperty('--mono', FONT_STACK(settings.font));
+  r.style.setProperty('--fs', settings.chatFont+'px');
+  r.style.setProperty('--debug-fs', settings.debugFont+'px');
+  r.style.setProperty('--debug-w', settings.debugWidth+'px');
+  document.body.style.fontFeatureSettings = settings.ligatures ? '"liga" 1,"calt" 1' : '"liga" 0,"calt" 0';
+  OLLAMA = settings.ollamaUrl;
+  scrollThreshold = settings.scrollThreshold;
+  $('app').classList.toggle('debug-closed', !settings.debugOpen);
+  $('debugToggle').classList.toggle('active', settings.debugOpen);
+  syncSettingsUI();
+}
+function syncSettingsUI(){
+  $('setOllamaUrl').value = settings.ollamaUrl;
+  $('setScanlines').checked = settings.scanlines;
+  $('setLigatures').checked = settings.ligatures;
+  $('setMarkdown').checked = settings.markdown;
+  $('setChatFont').value = settings.chatFont; $('setChatFontVal').textContent = settings.chatFont+'px';
+  $('setDebugFont').value = settings.debugFont; $('setDebugFontVal').textContent = settings.debugFont+'px';
+  $('setDebugWidth').value = settings.debugWidth; $('setDebugWidthVal').textContent = settings.debugWidth+'px';
+  document.querySelectorAll('.theme-chip').forEach(c=>c.classList.toggle('sel', c.dataset.id===settings.theme));
+  document.querySelectorAll('.font-chip').forEach(c=>c.classList.toggle('sel', c.dataset.id===settings.font));
 }
 
-applySettings(settings);
-
-function persistCurrent() {
-  settings.ollamaUrl = OLLAMA_BASE;
-  settings.chatFont = parseFloat($('setChatFont').value);
-  settings.debugFont = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--debug-font-size'));
-  settings.debugWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--debug-width'));
-  settings.scrollThreshold = scrollThreshold;
-  settings.debugOpen = !$('app').classList.contains('debug-closed');
-  saveSettings(settings);
+function buildThemeFontPickers(){
+  const tg=$('themeGrid');
+  THEMES.forEach(t=>{
+    const el=document.createElement('div'); el.className='theme-chip'; el.dataset.id=t.id;
+    el.innerHTML='<div class="swatch">'+t.sw.map(c=>'<i style="background:'+c+'"></i>').join('')+'</div>'+t.name;
+    el.onclick=()=>{ settings.theme=t.id; applySettings(); saveSettings(); };
+    tg.appendChild(el);
+  });
+  const fg=$('fontGrid');
+  FONTS.forEach(f=>{
+    const el=document.createElement('div'); el.className='font-chip'; el.dataset.id=f.id;
+    el.textContent=f.name; el.style.fontFamily=FONT_STACK(f.id);
+    el.onclick=()=>{ settings.font=f.id; applySettings(); saveSettings(); };
+    fg.appendChild(el);
+  });
 }
 
-function setStatus(s, t) { statusDot.className = 'status-dot ' + s; statusLabel.textContent = t; }
-function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmtBytes(b) { return b > 1e9 ? (b/1e9).toFixed(1)+' GB' : b > 1e6 ? (b/1e6).toFixed(0)+' MB' : b+' B'; }
-function timeStr(t) { return new Date(t).toLocaleTimeString(); }
-function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, el === sysInput ? 120 : 200) + 'px'; }
+// ---- HELPERS ----
+function setStatus(s,t){ statusDot.className='status-dot '+s; statusLabel.textContent=t; statusLabel.title=t; }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtBytes(b){ return b>1e9?(b/1e9).toFixed(1)+'GB':b>1e6?(b/1e6).toFixed(0)+'MB':b+'B'; }
+function timeStr(t){ return new Date(t).toLocaleTimeString(); }
+function autoResize(el,max){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,max)+'px'; }
+function copyText(t){ navigator.clipboard?.writeText(t); }
 
-// Smart auto-scroll
-function isNearBottom() { return (chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight) < scrollThreshold; }
-
-chatArea.addEventListener('scroll', () => {
-  if (isGenerating) {
-    if (isNearBottom()) { userScrolledUp = false; scrollInd.classList.remove('visible'); }
-    else { userScrolledUp = true; scrollInd.classList.add('visible'); }
-  }
-});
-
-chatArea.addEventListener('wheel', (e) => {
-  if (isGenerating && e.deltaY < 0) { userScrolledUp = true; scrollInd.classList.add('visible'); }
-}, { passive: true });
-
-scrollBtn.addEventListener('click', () => {
-  userScrolledUp = false; scrollInd.classList.remove('visible'); chatArea.scrollTop = chatArea.scrollHeight;
-});
-
-function smartScroll() { if (!userScrolledUp) chatArea.scrollTop = chatArea.scrollHeight; }
-
-// Logging
-function addRawLog(type, label, data) { rawLog.push({ type, label, data, time: Date.now() }); if (debugTab === 'raw') renderDebug(); }
-function addTimeline(event) { timelineLog.push({ event, time: Date.now() }); if (debugTab === 'timeline') renderDebug(); }
-function addTokenLog(token, raw, isThinking) {
-  tokenLog.push({ type: 'token', token, time: Date.now(), raw, isThinking: !!isThinking });
-  if (debugTab === 'stream') renderTokenAppend(token, isThinking);
+// ---- MARKDOWN (minimal, safe: escape first then format) ----
+function renderMarkdown(src){
+  const blocks=[]; // protect code fences
+  let text=src.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,lang,code)=>{
+    const i=blocks.length;
+    blocks.push('<div class="codeblock"><div class="codeblock-head"><span>'+esc(lang||'code')+'</span>'+
+      '<button class="codeblock-copy" data-code="'+encodeURIComponent(code)+'">copy</button></div>'+
+      '<pre>'+esc(code.replace(/\n$/,''))+'</pre></div>');
+    return ' B'+i+' ';
+  });
+  text=esc(text);
+  text=text.replace(/`([^`\n]+)`/g,(m,c)=>'<code class="inline">'+c+'</code>');
+  text=text.replace(/^###\s+(.+)$/gm,'<h3>$1</h3>').replace(/^##\s+(.+)$/gm,'<h2>$1</h2>').replace(/^#\s+(.+)$/gm,'<h1>$1</h1>');
+  text=text.replace(/^\s*&gt;\s?(.+)$/gm,'<blockquote>$1</blockquote>');
+  text=text.replace(/(?:^|\n)((?:[ \t]*(?:[-*]|\d+\.)[ \t]+.*(?:\n|$))+)/g,(m,blk)=>{
+    const ordered=/^[ \t]*\d+\./.test(blk);
+    const items=blk.replace(/\n+$/,'').split('\n').map(l=>'<li>'+l.replace(/^[ \t]*(?:[-*]|\d+\.)[ \t]+/,'')+'</li>').join('');
+    return '\n'+(ordered?'<ol>'+items+'</ol>':'<ul>'+items+'</ul>');
+  });
+  text=text.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>');
+  text=text.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  text=text.replace(/^(---|\*\*\*)$/gm,'<hr>');
+  // paragraphs
+  text=text.split(/\n{2,}/).map(p=>{
+    if(/^\s*<(h\d|ul|ol|blockquote|hr|div)/.test(p.trim())) return p;
+    return '<p>'+p.replace(/\n/g,'<br>')+'</p>';
+  }).join('');
+  text=text.replace(/ B(\d+) /g,(m,i)=>blocks[+i]);
+  return text;
 }
 
-let streamEl = null;
-function renderTokenAppend(token, isThinking) {
-  if (!streamEl) { debugContent.innerHTML = '<div class="token-stream" id="tsc"></div>'; streamEl = document.getElementById('tsc'); }
-  const s = document.createElement('span');
-  s.className = 'token' + (isThinking ? ' think-token' : '');
-  s.textContent = token;
-  s.title = 't+' + (Date.now() - (tokenLog[0]?.time || Date.now())) + 'ms' + (isThinking ? ' [thinking]' : '');
-  streamEl.appendChild(s); debugContent.scrollTop = debugContent.scrollHeight;
+// ---- THINKING TAG PARSING ----
+function parseThink(text){
+  const parts=[]; const re=/<think>([\s\S]*?)<\/think>/gi; let last=0,m;
+  while((m=re.exec(text))){ if(m.index>last) parts.push({type:'text',content:text.slice(last,m.index)});
+    parts.push({type:'thinking',content:m[1].trim()}); last=m.index+m[0].length; }
+  if(last<text.length) parts.push({type:'text',content:text.slice(last)});
+  return parts.length?parts:[{type:'text',content:text}];
+}
+function insideThink(text){ return ((text.match(/<think>/gi)||[]).length) > ((text.match(/<\/think>/gi)||[]).length); }
+
+let thinkSeq=0;
+function thinkBlockHTML(content, opts){
+  opts=opts||{}; const id='tb-'+(thinkSeq++);
+  const open=opts.open; const tok=opts.tokens||0, el=opts.elapsed||0;
+  const tps=(tok&&el>0)?(tok/(el/1000)).toFixed(1):'';
+  const s=tok?(' · '+tok+' tok'+(el?' · '+(el/1000).toFixed(1)+'s':'')+(tps?' · '+tps+' t/s':'')):'';
+  return '<div class="think"><div class="think-head" data-toggle="'+id+'">'+
+    '<span class="think-label">Thinking<span class="think-stats">'+s+'</span></span>'+
+    '<span class="think-chev'+(open?'':' collapsed')+'" id="'+id+'-c">&#x25BC;</span></div>'+
+    '<div class="think-body'+(open?' open':'')+'" id="'+id+'">'+esc(content)+'</div></div>';
 }
 
-// Thinking tag parsing for display
-function parseThinkingTags(text) {
-  const parts = [];
-  const regex = /<think>([\s\S]*?)<\/think>/gi;
-  let lastIndex = 0, match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
-    parts.push({ type: 'thinking', content: match[1].trim() });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) parts.push({ type: 'text', content: text.slice(lastIndex) });
-  return parts.length > 0 ? parts : [{ type: 'text', content: text }];
-}
-
-// Check if we're currently inside an open <think> tag (for streaming)
-function isInsideThinkTag(text) {
-  const opens = (text.match(/<think>/gi) || []).length;
-  const closes = (text.match(/<\/think>/gi) || []).length;
-  return opens > closes;
-}
-
-function renderThinkingBlockHTML(content, id, opts) {
-  opts = opts || {};
-  const compact = opts.compact !== false;
-  const tokCount = opts.tokens || 0;
-  const elapsed = opts.elapsed || 0;
-  const tps = (tokCount && elapsed > 0) ? (tokCount / (elapsed / 1000)).toFixed(1) : '';
-  const statsStr = tokCount ? ' · ' + tokCount + ' tok' + (elapsed ? ' · ' + (elapsed / 1000).toFixed(1) + 's' : '') + (tps ? ' · ' + tps + ' t/s' : '') : '';
-  const chevClass = compact ? 'thinking-chevron collapsed' : 'thinking-chevron';
-  const bodyClass = compact ? 'thinking-body' : 'thinking-body open';
-  const blockClass = 'thinking-block' + (compact ? ' compact' : '');
-  return '<div class="' + blockClass + '"><div class="thinking-header" onclick="toggleThinkBlock(\'' + id + '\')">' +
-    '<span class="thinking-label">Thinking<span class="think-inline-stats">' + statsStr + '</span></span>' +
-    '<span class="' + chevClass + '" id="' + id + '-chev">&#x25BC;</span></div>' +
-    '<div class="' + bodyClass + '" id="' + id + '">' + esc(content) + '</div></div>';
-}
-
-function toggleThinkBlock(id) {
-  const body = $(id);
-  const chev = $(id + '-chev');
-  if (body) { body.classList.toggle('open'); }
-  if (chev) { chev.classList.toggle('collapsed'); }
-}
-
-function renderMsgContent(text) {
-  const parts = parseThinkingTags(text);
-  if (parts.length === 1 && parts[0].type === 'text') return esc(text);
-  let html = '';
-  parts.forEach((p, i) => {
-    if (p.type === 'thinking') {
-      html += renderThinkingBlockHTML(p.content, 'tb-' + Date.now() + '-' + i);
-    } else {
-      html += '<span style="white-space:pre-wrap">' + esc(p.content) + '</span>';
-    }
+// render assistant content (thinking blocks + markdown/plain text body)
+function renderAssistant(full, useMd){
+  const parts=parseThink(full); let html='';
+  parts.forEach(p=>{
+    if(p.type==='thinking') html+=thinkBlockHTML(p.content,{});
+    else if(p.content) html += useMd ? '<span>'+renderMarkdown(p.content)+'</span>' : '<span>'+esc(p.content)+'</span>';
   });
   return html;
 }
 
-function appendChatMsg(role, content, opts) {
-  opts = opts || {};
-  const streaming = opts.streaming || false;
-  const label = opts.label || role;
-  const d = document.createElement('div'); d.className = 'msg ' + role;
-  let h = '<span class="role-label">' + esc(label) + '</span>';
-  if (streaming) {
-    h += '<span class="msg-text"><span class="typing-indicator"><span></span><span></span><span></span></span></span>';
-  } else {
-    const hasThinking = /<think>/i.test(content);
-    h += '<span class="msg-text">' + (hasThinking ? renderMsgContent(content) : esc(content)) + '</span>';
+// ---- CHAT MESSAGE DOM ----
+function clearEmpty(){ const e=$('chatEmpty'); if(e) e.remove(); }
+function appendMsg(role, content, opts){
+  opts=opts||{}; clearEmpty();
+  const d=document.createElement('div'); d.className='msg '+role; d.dataset.idx = opts.idx!=null?opts.idx:'';
+  const label=opts.label||role;
+  let inner='<div class="msg-head"><span class="role">'+esc(label)+'</span></div><div class="msg-bubble">';
+  if(opts.streaming) inner+='<span class="msg-text"><span class="typing"><span></span><span></span><span></span></span></span>';
+  else{
+    if(role==='assistant'){ const useMd=settings.markdown; inner+='<span class="msg-text'+(useMd?' md':'')+'">'+renderAssistant(content,useMd)+'</span>'; }
+    else inner+='<span class="msg-text">'+esc(content)+'</span>';
   }
-  if (role === 'assistant') h += '<div class="meta"></div>';
-  d.innerHTML = h;
-  chatArea.insertBefore(d, scrollInd);
+  if(role==='assistant') inner+='<div class="meta"></div>';
+  inner+='</div>';
+  inner+='<div class="msg-actions">'+
+    '<button class="act-btn" data-act="copy">copy</button>'+
+    (role==='user'?'<button class="act-btn" data-act="edit">edit</button>':'')+
+    (role==='assistant'?'<button class="act-btn" data-act="regen">regenerate</button><button class="act-btn" data-act="raw">raw</button>':'')+
+    '<button class="act-btn" data-act="del">delete</button></div>';
+  d.innerHTML=inner;
+  chatArea.insertBefore(d, scrollResume);
   smartScroll();
   return d;
 }
 
-function setGenerating(v) {
-  isGenerating = v; sendBtn.classList.toggle('stop', v); sendBtn.innerHTML = v ? '&#x23F9;' : '&#x25B6;';
-  if (!v) { userScrolledUp = false; scrollInd.classList.remove('visible'); }
+// ---- SCROLL ----
+function isNearBottom(){ return (chatArea.scrollHeight-chatArea.scrollTop-chatArea.clientHeight)<scrollThreshold; }
+function smartScroll(){ if(!userScrolledUp) chatArea.scrollTop=chatArea.scrollHeight; }
+chatArea.addEventListener('scroll',()=>{ if(isGenerating){ if(isNearBottom()){ userScrolledUp=false; scrollResume.classList.remove('show'); } else { userScrolledUp=true; scrollResume.classList.add('show'); } }});
+chatArea.addEventListener('wheel',e=>{ if(isGenerating&&e.deltaY<0){ userScrolledUp=true; scrollResume.classList.add('show'); }},{passive:true});
+$('scrollResumeBtn').onclick=()=>{ userScrolledUp=false; scrollResume.classList.remove('show'); chatArea.scrollTop=chatArea.scrollHeight; };
+
+// ---- LOGGING ----
+function addRaw(type,label,data){ rawLog.push({type,label,data,time:Date.now()}); if(debugTab==='raw') renderDebug(); }
+function addTL(event){ timelineLog.push({event,time:Date.now()}); if(debugTab==='timeline') renderDebug(); }
+let streamEl=null;
+function addTokenLog(token,raw,isThink){ tokenLog.push({type:'token',token,time:Date.now(),raw,isThink:!!isThink});
+  if(debugTab==='stream') appendTok(token,isThink); }
+function appendTok(token,isThink){
+  if(!streamEl){ debugContent.innerHTML='<div class="tokens" id="tsc"></div>'; streamEl=$('tsc'); }
+  const s=document.createElement('span'); s.className='tok'+(isThink?' think':''); s.textContent=token;
+  s.title='t+'+(Date.now()-(tokenLog[0]?.time||Date.now()))+'ms'+(isThink?' [think]':'');
+  streamEl.appendChild(s); debugContent.scrollTop=debugContent.scrollHeight;
 }
 
-// Update thinking tab indicator
-function updateThinkingTabState() {
-  const tab = $('thinkingTab');
-  if (thinkingLog.length > 0) {
-    tab.classList.add('has-thinking');
+function updateThinkTab(){ $('thinkingTab').classList.toggle('has-think', thinkingLog.length>0); }
+
+// ---- MODELS ----
+async function refreshModels(){
+  try{
+    setStatus('loading','connecting...');
+    const r=await fetch(OLLAMA+'/api/tags'); const d=await r.json();
+    const cur=modelSelect.value;
+    modelSelect.innerHTML='';
+    d.models.forEach(m=>{ const o=document.createElement('option'); o.value=m.name;
+      o.textContent=m.name+' ('+fmtBytes(m.size)+')'; modelSelect.appendChild(o); });
+    if(cur&&[...modelSelect.options].some(o=>o.value===cur)) modelSelect.value=cur;
+    setStatus('connected', d.models.length+' model'+(d.models.length!==1?'s':''));
+    addRaw('sys','Connected',{url:OLLAMA,models:d.models.map(m=>m.name)}); addTL('Connected to Ollama');
+    if(d.models.length) fetchModelInfo(modelSelect.value);
+  }catch(e){ setStatus('','cannot reach Ollama'); addRaw('err','Connection failed',{error:e.message}); addTL('Failed: '+e.message); }
+}
+async function fetchModelInfo(name){
+  try{ const r=await fetch(OLLAMA+'/api/show',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    currentModelInfo=await r.json(); addRaw('sys','Model: '+name,currentModelInfo);
+    // pull context length hint
+    const ml=currentModelInfo.model_info||{}; const ctxKey=Object.keys(ml).find(k=>k.endsWith('.context_length'));
+    if(ctxKey&&ml[ctxKey]) { const c=ml[ctxKey]; $('ctxInput').title='Model max: '+c; }
+    if(debugTab==='model') renderDebug();
+  }catch(e){ currentModelInfo=null; }
+}
+modelSelect.addEventListener('change',()=>fetchModelInfo(modelSelect.value));
+
+// ---- PARAMS ----
+function getOptions(){
+  const o={ temperature:parseFloat($('tempInput').value), num_predict:parseInt($('maxTokInput').value),
+    top_p:parseFloat($('topPInput').value), top_k:parseInt($('topKInput').value),
+    repeat_penalty:parseFloat($('repInput').value), num_ctx:parseInt($('ctxInput').value) };
+  const mp=parseFloat($('minPInput').value); if(mp>0) o.min_p=mp;
+  const seed=parseInt($('seedInput').value); if(seed>=0) o.seed=seed;
+  return o;
+}
+function applyPreset(p){
+  const v=PRESETS[p]; if(!v) return;
+  $('tempInput').value=v.temp; $('tempSlider').value=Math.round(v.temp*100);
+  $('topPInput').value=v.top_p; $('topPSlider').value=Math.round(v.top_p*100);
+  $('topKInput').value=v.top_k; $('repInput').value=v.rep;
+}
+
+// ---- SEND ----
+async function sendMessage(regen){
+  if(isGenerating) return;
+  let text;
+  if(regen){
+    // drop trailing assistant, resend on existing user turn
+    if(messages.length===0) return;
+    if(messages[messages.length-1].role==='assistant'){ messages.pop(); const last=chatArea.querySelector('.msg.assistant:last-of-type'); if(last) last.remove(); }
+    if(!messages.length||messages[messages.length-1].role!=='user') return;
+    text=null;
   } else {
-    tab.classList.remove('has-thinking');
+    text=userInput.value.trim(); if(!text) return;
+    userInput.value=''; autoResize(userInput,240);
+    messages.push({role:'user',content:text});
+    appendMsg('user',text,{idx:messages.length-1});
+    addTL('User: "'+text.slice(0,60)+(text.length>60?'...':'')+'"');
   }
-}
+  userScrolledUp=false; scrollResume.classList.remove('show');
 
-async function refreshModels() {
-  try {
-    setStatus('loading', 'connecting...');
-    const r = await fetch(OLLAMA_BASE + '/api/tags');
-    const d = await r.json();
-    modelSelect.innerHTML = '';
-    d.models.forEach(m => {
-      const o = document.createElement('option');
-      o.value = m.name; o.textContent = m.name + ' (' + fmtBytes(m.size) + ')';
-      modelSelect.appendChild(o);
-    });
-    setStatus('connected', d.models.length + ' model' + (d.models.length !== 1 ? 's' : ''));
-    addRawLog('sys', 'Connected', { url: OLLAMA_BASE, models: d.models.map(m => m.name) });
-    addTimeline('Connected to Ollama');
-    if (d.models.length > 0) fetchModelInfo(d.models[0].name);
-  } catch (e) {
-    setStatus('disconnected', 'cannot reach Ollama');
-    addRawLog('err', 'Connection failed', { error: e.message });
-    addTimeline('Failed: ' + e.message);
-  }
-}
-
-async function fetchModelInfo(name) {
-  try {
-    const r = await fetch(OLLAMA_BASE + '/api/show', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-    currentModelInfo = await r.json();
-    addRawLog('sys', 'Model: ' + name, currentModelInfo);
-    if (debugTab === 'model') renderDebug();
-  } catch (e) { currentModelInfo = null; }
-}
-modelSelect.addEventListener('change', () => fetchModelInfo(modelSelect.value));
-
-async function sendMessage() {
-  const text = userInput.value.trim();
-  if (!text || isGenerating) return;
-  userInput.value = ''; autoResize(userInput); userScrolledUp = false; scrollInd.classList.remove('visible');
-
-  messages.push({ role: 'user', content: text });
-  appendChatMsg('user', text);
-  addTimeline('User: "' + text.slice(0, 60) + (text.length > 60 ? '...' : '') + '"');
-
-  const model = modelSelect.value;
-  // Strip tag/size suffix for display: "deepseek-r1:8b" -> "deepseek-r1:8b"
-  const modelLabel = model.split(' ')[0]; // in case option text leaks
-
-  const options = {
-    temperature: parseFloat($('tempInput').value),
-    num_predict: parseInt($('maxTokInput').value),
-    top_p: parseFloat($('topPInput').value),
-    top_k: parseInt($('topKInput').value),
-    repeat_penalty: parseFloat($('repeatPenInput').value)
-  };
-  const seed = parseInt($('seedInput').value);
-  if (seed >= 0) options.seed = seed;
-
-  const allMsgs = [];
-  if (systemPromptEnabled && sysInput.value.trim()) allMsgs.push({ role: 'system', content: sysInput.value.trim() });
+  const model=modelSelect.value;
+  if(!model){ setStatus('','no model'); return; }
+  const options=getOptions();
+  const allMsgs=[];
+  if(sysEnabled && sysInput.value.trim()) allMsgs.push({role:'system',content:sysInput.value.trim()});
   allMsgs.push(...messages);
 
-  const reqBody = { model, messages: allMsgs, stream: true, options };
-  addRawLog('req', 'POST /api/chat -> ' + model, reqBody);
-  addTimeline('Request -> ' + model);
-  tokenLog.push({ type: 'separator', time: Date.now() });
+  const reqBody={ model, messages:allMsgs, stream:true, options };
+  if($('thinkToggle').checked) reqBody.think=true;
+  addRaw('req','POST /api/chat -> '+model,reqBody); addTL('Request -> '+model);
+  tokenLog.push({type:'separator',time:Date.now()});
 
-  const msgEl = appendChatMsg('assistant', '', { streaming: true, label: modelLabel });
-  const contentEl = msgEl.querySelector('.msg-text');
-  const metaEl = msgEl.querySelector('.meta');
+  const msgEl=appendMsg('assistant','',{streaming:true,label:model.split(':')[0],idx:messages.length});
+  const contentEl=msgEl.querySelector('.msg-text'); const metaEl=msgEl.querySelector('.meta');
   setGenerating(true);
 
-  let full = '', thinkFull = '', tokCount = 0, thinkTokCount = 0;
-  let startTime = performance.now(), firstTokTime = null, lastData = null;
-  let thinkStartTime = null;
-  let insideThink = false;     // For inline <think> tag tracking
-  let ollamaThinking = false;  // For Ollama's separate thinking field
-  let currentThinkContent = '';
+  let full='',thinkFull='',tokCount=0,thinkTok=0;
+  let startTime=performance.now(),firstTok=null,lastData=null,thinkStart=null;
+  let inlineThink=false, ollamaThink=false, curThink='';
 
-  try {
-    const ctrl = new AbortController(); currentAbort = ctrl;
-    const res = await fetch(OLLAMA_BASE + '/api/chat', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reqBody), signal: ctrl.signal
-    });
-    addTimeline('HTTP ' + res.status + ' - streaming');
-    const reader = res.body.getReader(), dec = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split('\n');
-      buf = lines.pop(); // keep incomplete line in buffer
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const data = JSON.parse(line);
+  try{
+    const ctrl=new AbortController(); currentAbort=ctrl;
+    const res=await fetch(OLLAMA+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody),signal:ctrl.signal});
+    addTL('HTTP '+res.status+' - streaming');
+    const reader=res.body.getReader(),dec=new TextDecoder(); let buf='';
+    while(true){
+      const {done,value}=await reader.read(); if(done) break;
+      buf+=dec.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop();
+      for(const line of lines){
+        if(!line.trim()) continue;
+        let data; try{ data=JSON.parse(line); }catch(e){ continue; }
+        const thinkPart=data.message?.thinking, contentPart=data.message?.content;
+        const hasThink=thinkPart!=null&&thinkPart!=='', hasContent=contentPart!=null&&contentPart!=='';
 
-          // --- Ollama thinking field (separate from content) ---
-          // Newer Ollama sends thinking in data.message.thinking or similar fields
-          const thinkTok = data.message?.thinking;
-          const contentTok = data.message?.content;
-          const hasThinkField = thinkTok !== undefined && thinkTok !== null && thinkTok !== '';
-          const hasContent = contentTok !== undefined && contentTok !== null && contentTok !== '';
-
-          if (hasThinkField) {
-            // Ollama is sending thinking via separate field
-            if (!ollamaThinking) {
-              ollamaThinking = true;
-              thinkStartTime = performance.now();
-              addTimeline('Thinking started (Ollama thinking field)');
-            }
-            thinkFull += thinkTok;
-            currentThinkContent += thinkTok;
-            thinkTokCount++;
-            tokCount++;
-            if (!firstTokTime) { firstTokTime = performance.now(); addTimeline('TTFT: ' + (firstTokTime - startTime).toFixed(0) + 'ms'); }
-
-            // Show compact collapsed thinking indicator in chat
-            const liveElapsed = performance.now() - thinkStartTime;
-            const liveTps = liveElapsed > 0 ? (thinkTokCount / (liveElapsed / 1000)).toFixed(1) : '0';
-            let html = '<div class="thinking-block compact" style="opacity:.7"><div class="thinking-header" onclick="toggleThinkBlock(\'tb-live-think\')">' +
-              '<span class="thinking-label">Thinking<span class="think-inline-stats"> · ' + thinkTokCount + ' tok · ' + (liveElapsed / 1000).toFixed(1) + 's · ' + liveTps + ' t/s</span></span>' +
-              '<span class="thinking-chevron collapsed" id="tb-live-think-chev">&#x25BC;</span></div>' +
-              '<div class="thinking-body" id="tb-live-think">' + esc(thinkFull) + '</div></div>';
-            if (full) html += '<span style="white-space:pre-wrap">' + esc(full) + '</span>';
-            contentEl.innerHTML = html;
-            smartScroll();
-            addTokenLog(thinkTok, data, true);
-
-            // Live update thinking tab
-            if (debugTab === 'thinking') {
-              renderLiveThinking(thinkFull, thinkTokCount, performance.now() - thinkStartTime);
-            }
+        if(hasThink){
+          if(!ollamaThink){ ollamaThink=true; thinkStart=performance.now(); addTL('Thinking started'); }
+          thinkFull+=thinkPart; curThink+=thinkPart; thinkTok++; tokCount++;
+          if(!firstTok){ firstTok=performance.now(); addTL('TTFT '+(firstTok-startTime).toFixed(0)+'ms'); }
+          const el=performance.now()-thinkStart, tps=el>0?(thinkTok/(el/1000)).toFixed(1):'0';
+          let html='<div class="think"><div class="think-head"><span class="think-label">Thinking<span class="think-stats"> · '+thinkTok+' tok · '+(el/1000).toFixed(1)+'s · '+tps+' t/s</span></span></div><div class="think-body open">'+esc(thinkFull)+'</div></div>';
+          if(full) html+='<span>'+esc(full)+'</span>';
+          contentEl.innerHTML=html; smartScroll(); addTokenLog(thinkPart,data,true);
+          if(debugTab==='thinking') renderLiveThink(thinkFull,thinkTok,el);
+        }
+        if(hasContent){
+          if(ollamaThink){ // thinking finished
+            const te=performance.now()-(thinkStart||startTime);
+            thinkingLog.push({content:curThink.trim(),elapsed:te,tokens:thinkTok,requestIndex:stats.requests});
+            updateThinkTab(); if(debugTab==='thinking') renderDebug();
+            addTL('Thinking done: '+thinkTok+' tok, '+(te/1000).toFixed(1)+'s'); ollamaThink=false; curThink='';
           }
-
-          if (hasContent) {
-            // If we were in Ollama thinking mode and now got content, finalize thinking
-            if (ollamaThinking && !hasThinkField) {
-              const thinkElapsed = performance.now() - (thinkStartTime || startTime);
-              thinkingLog.push({
-                content: currentThinkContent.trim(),
-                startTime: thinkStartTime,
-                endTime: performance.now(),
-                elapsed: thinkElapsed,
-                tokens: thinkTokCount,
-                requestIndex: stats.requests
-              });
-              updateThinkingTabState();
-              if (debugTab === 'thinking') renderDebug();
-              addTimeline('Thinking done: ' + thinkTokCount + ' tok, ' + (thinkElapsed / 1000).toFixed(1) + 's');
-              ollamaThinking = false;
-              currentThinkContent = '';
-            }
-
-            full += contentTok; tokCount++;
-            if (!firstTokTime) { firstTokTime = performance.now(); addTimeline('TTFT: ' + (firstTokTime - startTime).toFixed(0) + 'ms'); }
-
-            // --- Inline <think> tag tracking (fallback for models that embed tags) ---
-            const wasInside = insideThink;
-            insideThink = isInsideThinkTag(full);
-
-            if (!wasInside && insideThink) {
-              thinkStartTime = performance.now();
-              currentThinkContent = '';
-              thinkTokCount = 0;
-              addTimeline('Thinking started (inline tags)');
-            }
-            if (wasInside && !insideThink) {
-              const thinkElapsed = performance.now() - (thinkStartTime || startTime);
-              thinkingLog.push({
-                content: currentThinkContent.trim(),
-                startTime: thinkStartTime,
-                endTime: performance.now(),
-                elapsed: thinkElapsed,
-                tokens: thinkTokCount,
-                requestIndex: stats.requests
-              });
-              updateThinkingTabState();
-              if (debugTab === 'thinking') renderDebug();
-              addTimeline('Thinking done: ' + thinkTokCount + ' tok, ' + (thinkElapsed / 1000).toFixed(1) + 's');
-              currentThinkContent = '';
-              thinkTokCount = 0;
-            }
-
-            if (insideThink) {
-              let cleanTok = contentTok;
-              if (contentTok.includes('<think>')) cleanTok = contentTok.split('<think>').pop();
-              currentThinkContent += cleanTok;
-              thinkTokCount++;
-            }
-
-            // Render message with thinking blocks
-            const displayParts = parseThinkingTags(full);
-            const hasThinkingInContent = displayParts.some(p => p.type === 'thinking');
-
-            let html = '';
-            // Completed Ollama thinking block at the top
-            if (thinkFull && !ollamaThinking) {
-              html += renderThinkingBlockHTML(thinkFull, 'tb-ollama-done');
-            }
-
-            if (hasThinkingInContent || insideThink) {
-              displayParts.forEach((p, i) => {
-                if (p.type === 'thinking') {
-                  html += renderThinkingBlockHTML(p.content, 'tb-live-' + i);
-                } else {
-                  html += '<span style="white-space:pre-wrap">' + esc(p.content) + '</span>';
-                }
-              });
-              if (insideThink) {
-                const ithinkElapsed = performance.now() - (thinkStartTime || startTime);
-                const ithinkTps = ithinkElapsed > 0 ? (thinkTokCount / (ithinkElapsed / 1000)).toFixed(1) : '0';
-                html += '<div class="thinking-block compact" style="opacity:.7"><div class="thinking-header">' +
-                  '<span class="thinking-label">Thinking<span class="think-inline-stats"> · ' + thinkTokCount + ' tok · ' + (ithinkElapsed / 1000).toFixed(1) + 's · ' + ithinkTps + ' t/s</span></span>' +
-                  '</div></div>';
-              }
-              contentEl.innerHTML = html;
-            } else if (thinkFull && !ollamaThinking) {
-              // Had Ollama thinking, now showing content
-              html += '<span style="white-space:pre-wrap">' + esc(full) + '</span>';
-              contentEl.innerHTML = html;
-            } else {
-              contentEl.textContent = full;
-            }
-
-            smartScroll();
-            addTokenLog(contentTok, data, insideThink || contentTok.includes('<think>') || contentTok.includes('</think>'));
-          }
-
-          if (data.done) lastData = data;
-        } catch (e) {}
+          full+=contentPart; tokCount++;
+          if(!firstTok){ firstTok=performance.now(); addTL('TTFT '+(firstTok-startTime).toFixed(0)+'ms'); }
+          const was=inlineThink; inlineThink=insideThink(full);
+          if(!was&&inlineThink){ thinkStart=performance.now(); curThink=''; thinkTok=0; addTL('Thinking started (inline)'); }
+          if(was&&!inlineThink){ const te=performance.now()-(thinkStart||startTime);
+            thinkingLog.push({content:curThink.trim(),elapsed:te,tokens:thinkTok,requestIndex:stats.requests});
+            updateThinkTab(); if(debugTab==='thinking') renderDebug();
+            addTL('Thinking done: '+thinkTok+' tok, '+(te/1000).toFixed(1)+'s'); curThink=''; thinkTok=0; }
+          if(inlineThink){ let c=contentPart; if(c.includes('<think>')) c=c.split('<think>').pop(); curThink+=c; thinkTok++; }
+          // live render: plain text while streaming (markdown applied at finalize)
+          const parts=parseThink(full); let html='';
+          if(thinkFull&&!ollamaThink&&!parts.some(p=>p.type==='thinking')) html+=thinkBlockHTML(thinkFull,{open:false});
+          parts.forEach(p=>{ if(p.type==='thinking') html+=thinkBlockHTML(p.content,{open:inlineThink}); else if(p.content) html+='<span>'+esc(p.content)+'</span>'; });
+          contentEl.innerHTML=html; smartScroll();
+          addTokenLog(contentPart,data, inlineThink||contentPart.includes('think>'));
+        }
+        if(data.done) lastData=data;
       }
     }
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      // Save partial thinking if stopped mid-think
-      if ((insideThink || ollamaThinking) && currentThinkContent.trim()) {
-        thinkingLog.push({
-          content: currentThinkContent.trim() + '\n[stopped]',
-          startTime: thinkStartTime,
-          endTime: performance.now(),
-          elapsed: performance.now() - (thinkStartTime || startTime),
-          tokens: thinkTokCount,
-          requestIndex: stats.requests,
-          partial: true
-        });
-        updateThinkingTabState();
-      }
-      let stoppedHtml = '';
-      if (thinkFull) stoppedHtml += renderThinkingBlockHTML(thinkFull + (ollamaThinking ? '\n[stopped]' : ''), 'tb-stopped');
-      stoppedHtml += renderMsgContent(full) + '\n\n[stopped]';
-      contentEl.innerHTML = stoppedHtml;
-      addTimeline('Stopped at ' + tokCount + ' tok');
-    }
-    else { contentEl.textContent = '[Error: ' + e.message + ']'; addTimeline('Error: ' + e.message); }
+  }catch(e){
+    if(e.name==='AbortError'){
+      if((inlineThink||ollamaThink)&&curThink.trim()) thinkingLog.push({content:curThink.trim()+'\n[stopped]',elapsed:performance.now()-(thinkStart||startTime),tokens:thinkTok,requestIndex:stats.requests,partial:true});
+      updateThinkTab();
+      contentEl.innerHTML=renderAssistant(full,settings.markdown)+'<span style="color:var(--fg-muted)"> [stopped]</span>';
+      addTL('Stopped at '+tokCount+' tok');
+    } else { contentEl.innerHTML='<span style="color:var(--err)">[Error: '+esc(e.message)+']</span>'; addTL('Error: '+e.message); }
   }
 
-  // Finalize any remaining Ollama thinking that wasn't closed
-  if (ollamaThinking && currentThinkContent.trim()) {
-    const thinkElapsed = performance.now() - (thinkStartTime || startTime);
-    thinkingLog.push({
-      content: currentThinkContent.trim(),
-      startTime: thinkStartTime,
-      endTime: performance.now(),
-      elapsed: thinkElapsed,
-      tokens: thinkTokCount,
-      requestIndex: stats.requests
-    });
-    updateThinkingTabState();
+  // finalize
+  const elapsed=performance.now()-startTime, ttft=firstTok?firstTok-startTime:0;
+  const genTime=firstTok?performance.now()-firstTok:elapsed, tps=tokCount>0?tokCount/(genTime/1000):0;
+  const rs={ model, tokens:tokCount, elapsed_ms:elapsed.toFixed(0), gen_ms:genTime.toFixed(0),
+    tps:tps.toFixed(1), ttft_ms:ttft.toFixed(0), ...options };
+  if(lastData){
+    if(lastData.eval_count) rs.ol_eval_count=lastData.eval_count;
+    if(lastData.eval_duration){ rs.ol_eval_tps=(lastData.eval_count/(lastData.eval_duration/1e9)).toFixed(1); }
+    if(lastData.prompt_eval_count){ rs.ol_prompt_tokens=lastData.prompt_eval_count; lastPromptTokens=lastData.prompt_eval_count; updateCtxMeter(); }
+    if(lastData.load_duration) rs.ol_load_ms=(lastData.load_duration/1e6).toFixed(0);
+    if(lastData.total_duration) rs.ol_total_ms=(lastData.total_duration/1e6).toFixed(0);
+  }
+  const mp=[tokCount+' tok',(elapsed/1000).toFixed(1)+'s',tps.toFixed(1)+' tok/s','TTFT '+ttft.toFixed(0)+'ms'];
+  if(lastData?.prompt_eval_count) mp.push('prompt '+lastData.prompt_eval_count+' tok');
+  metaEl.innerHTML=mp.map(p=>{ let c=''; if(p.includes('tok/s')){ const v=parseFloat(p); c=v>20?'good':v>5?'':'warn'; } return '<span class="'+c+'">'+p+'</span>'; }).join('');
+
+  // final markdown render
+  if(full && settings.markdown){ contentEl.className='msg-text md'; }
+  contentEl.innerHTML = renderAssistant(full, settings.markdown && !!full);
+  // re-open final think block stats by re-rendering with stats
+  if(thinkFull && !parseThink(full).some(p=>p.type==='thinking')){
+    const lt=thinkingLog[thinkingLog.length-1];
+    contentEl.innerHTML = thinkBlockHTML(thinkFull,{tokens:lt?lt.tokens:thinkTok,elapsed:lt?lt.elapsed:0}) + (full?(settings.markdown?'<span>'+renderMarkdown(full)+'</span>':'<span>'+esc(full)+'</span>'):'');
   }
 
-  const elapsed = performance.now() - startTime;
-  const ttft = firstTokTime ? firstTokTime - startTime : 0;
-  const genTime = firstTokTime ? performance.now() - firstTokTime : elapsed;
-  const tps = tokCount > 0 ? tokCount / (genTime / 1000) : 0;
+  stats.totalTokens+=tokCount; stats.totalPromptTokens+=(lastData?.prompt_eval_count||0);
+  stats.totalTime+=elapsed; stats.requests++; stats.perRequest.push(rs);
+  addRaw('res','Complete',rs); addTL('Done: '+tokCount+' tok, '+tps.toFixed(1)+' tok/s');
+  messages.push({role:'assistant',content:full});
+  currentAbort=null; setGenerating(false); renderDebug(); autosave();
+}
 
-  const rs = {
-    model, tokens: tokCount, elapsed_ms: elapsed.toFixed(0), gen_ms: genTime.toFixed(0),
-    tps: tps.toFixed(1), ttft_ms: ttft.toFixed(0), ...options, seed: seed >= 0 ? seed : 'random'
-  };
-  if (lastData) {
-    if (lastData.eval_count) rs.ol_eval_count = lastData.eval_count;
-    if (lastData.eval_duration) { rs.ol_eval_ms = (lastData.eval_duration / 1e6).toFixed(1); rs.ol_eval_tps = (lastData.eval_count / (lastData.eval_duration / 1e9)).toFixed(1); }
-    if (lastData.prompt_eval_count) rs.ol_prompt_tokens = lastData.prompt_eval_count;
-    if (lastData.prompt_eval_duration) rs.ol_prompt_ms = (lastData.prompt_eval_duration / 1e6).toFixed(1);
-    if (lastData.load_duration) rs.ol_load_ms = (lastData.load_duration / 1e6).toFixed(1);
-    if (lastData.total_duration) rs.ol_total_ms = (lastData.total_duration / 1e6).toFixed(1);
+function setGenerating(v){ isGenerating=v; sendBtn.classList.toggle('stop',v); sendBtn.innerHTML=v?'&#x25A0;':'&#x25B6;';
+  if(!v){ userScrolledUp=false; scrollResume.classList.remove('show'); } }
+
+function updateCtxMeter(){
+  const ctx=parseInt($('ctxInput').value)||4096; const pct=Math.min(100,(lastPromptTokens/ctx)*100);
+  $('ctxText').textContent=lastPromptTokens+'/'+ctx; const f=$('ctxFill'); f.style.width=pct+'%';
+  f.style.background = pct>90?'var(--err)':pct>70?'var(--warn)':'var(--accent)';
+}
+
+// ---- LIVE THINKING TAB ----
+function renderLiveThink(content,tok,elapsed){
+  const tps=elapsed>0?(tok/(elapsed/1000)).toFixed(1):'—';
+  let h='<div class="think-entry" style="border-color:var(--cyan)"><div class="think-entry-head"><span class="think-entry-label" style="animation:blink .7s infinite">&#x25CF; Live</span><span class="think-entry-meta">'+tok+' tok · '+(elapsed/1000).toFixed(1)+'s · '+tps+' tok/s</span></div><div class="think-entry-body">'+esc(content)+'</div></div>';
+  debugContent.innerHTML=h; debugContent.scrollTop=debugContent.scrollHeight;
+}
+
+// ---- DEBUG RENDER ----
+function renderDebug(){
+  streamEl=null;
+  if(debugTab==='stream'){
+    if(!tokenLog.length){ debugContent.innerHTML='<div class="empty">Tokens stream here in real time.<br><br><span style="color:var(--accent-2)">Hover</span> a token for timing.<br><span style="color:var(--cyan)">Cyan</span> = thinking tokens.</div>'; return; }
+    let h='<div class="tokens" id="tsc">';
+    tokenLog.forEach(t=>{ if(t.type==='separator') h+='</div><div class="tok-sep"></div><div class="tokens">';
+      else h+='<span class="tok'+(t.isThink?' think':'')+'" title="t+'+(t.time-(tokenLog[0]?.time||0))+'ms">'+esc(t.token)+'</span>'; });
+    h+='</div>'; debugContent.innerHTML=h; streamEl=$('tsc'); debugContent.scrollTop=debugContent.scrollHeight;
+  } else if(debugTab==='thinking'){ renderThinkTab(); }
+  else if(debugTab==='raw'){
+    if(!rawLog.length){ debugContent.innerHTML='<div class="empty">Raw API payloads logged here.</div>'; return; }
+    debugContent.innerHTML=rawLog.map(e=>'<div class="entry"><span class="ts">'+timeStr(e.time)+'</span> <span class="tag '+e.type+'">'+e.type.toUpperCase()+'</span> '+esc(e.label)+(e.data?'<pre>'+esc(JSON.stringify(e.data,null,2))+'</pre>':'')+'</div>').join('');
+    debugContent.scrollTop=debugContent.scrollHeight;
+  } else if(debugTab==='stats'){
+    const avg=stats.perRequest.length?(stats.perRequest.reduce((a,r)=>a+parseFloat(r.tps),0)/stats.perRequest.length).toFixed(1):'—';
+    let h='<div class="stats-grid"><div class="stat-box"><div class="stat-val">'+stats.requests+'</div><div class="stat-label">requests</div></div><div class="stat-box"><div class="stat-val">'+stats.totalTokens+'</div><div class="stat-label">gen tokens</div></div><div class="stat-box"><div class="stat-val">'+avg+'</div><div class="stat-label">avg tok/s</div></div><div class="stat-box"><div class="stat-val">'+stats.totalPromptTokens+'</div><div class="stat-label">prompt tokens</div></div></div>';
+    if(stats.perRequest.length){ h+='<div style="color:var(--accent-2);margin:12px 0 8px">Per-request</div>';
+      stats.perRequest.forEach((r,i)=>{ const t=parseFloat(r.tps),bw=Math.min(100,t/60*100),bc=t>20?'var(--ok)':t>8?'var(--warn)':'var(--err)';
+        h+='<div class="entry"><div style="color:var(--fg)">Req '+(i+1)+'</div><div style="margin:4px 0">'+r.tokens+' tok · '+t+' tok/s · TTFT '+r.ttft_ms+'ms · '+(parseFloat(r.elapsed_ms)/1000).toFixed(1)+'s</div><div class="perf-bar"><div class="fill" style="width:'+bw+'%;background:'+bc+'"></div></div>';
+        if(r.ol_eval_tps) h+='<div style="margin-top:6px;font-size:.9em"><span style="color:var(--accent-2)">ollama:</span> eval '+r.ol_eval_tps+' tok/s'+(r.ol_load_ms?' · load '+r.ol_load_ms+'ms':'')+'</div>';
+        h+='<div style="margin-top:4px;font-size:.85em;color:var(--fg-muted)">temp='+r.temperature+' top_p='+r.top_p+' top_k='+r.top_k+' rep='+r.repeat_penalty+(r.seed!=null?' seed='+r.seed:'')+'</div></div>'; }); }
+    debugContent.innerHTML=h;
+  } else if(debugTab==='messages'){
+    const all=[]; if(sysEnabled&&sysInput.value.trim()) all.push({role:'system',content:sysInput.value.trim()}); all.push(...messages);
+    let h='<div style="margin-bottom:12px"><span style="color:var(--accent-2)">messages[]</span> <span style="color:var(--fg-muted)">'+all.length+' entries · ~'+JSON.stringify(all).length+' chars</span></div>';
+    all.forEach((m,i)=>{ const p=m.content.length>100?m.content.slice(0,100)+'…':m.content;
+      h+='<div class="msg-entry role-'+m.role+'" onclick="this.classList.toggle(\'expanded\')"><span class="me-role '+m.role+'">['+i+'] '+m.role+'</span> <span class="me-prev">'+esc(p)+'</span><pre class="me-full">'+esc(m.content)+'</pre></div>'; });
+    debugContent.innerHTML=h;
+  } else if(debugTab==='timeline'){
+    if(!timelineLog.length){ debugContent.innerHTML='<div class="empty">Event timeline.</div>'; return; }
+    const t0=timelineLog[0].time;
+    debugContent.innerHTML=timelineLog.map(e=>{ const off=e.time-t0,os=off>60000?'+'+(off/60000).toFixed(1)+'m':'+'+(off/1000).toFixed(1)+'s';
+      return '<div class="tl-entry"><span class="tl-time">'+timeStr(e.time)+'<br><span style="color:var(--accent-2)">'+os+'</span></span><span class="tl-event">'+esc(e.event)+'</span></div>'; }).join('');
+    debugContent.scrollTop=debugContent.scrollHeight;
+  } else if(debugTab==='model'){
+    if(!currentModelInfo){ debugContent.innerHTML='<div class="empty">Select a model to inspect.</div>'; return; }
+    const m=currentModelInfo; let h='<div style="color:var(--accent-2);margin-bottom:12px">'+esc(modelSelect.value)+'</div>';
+    if(m.details) h+='<div class="entry"><span class="tag sys">DETAILS</span><pre>'+esc(JSON.stringify(m.details,null,2))+'</pre></div>';
+    if(m.model_info) h+='<div class="entry"><span class="tag sys">ARCH</span><pre>'+esc(JSON.stringify(m.model_info,null,2))+'</pre></div>';
+    if(m.parameters) h+='<div class="entry"><span class="tag sys">PARAMETERS</span><pre>'+esc(m.parameters)+'</pre></div>';
+    if(m.template) h+='<div class="entry"><span class="tag sys">TEMPLATE</span><pre>'+esc(m.template)+'</pre></div>';
+    debugContent.innerHTML=h;
   }
+}
+function renderThinkTab(){
+  if(!thinkingLog.length&&!isGenerating){ debugContent.innerHTML='<div class="empty"><div class="icon">&#x1F4AD;</div><div>No thinking captured yet.</div><br><div style="font-size:.85em">Use a reasoning model (e.g. <span style="color:var(--accent-2)">deepseek-r1</span>, <span style="color:var(--accent-2)">qwen3</span>) or toggle <span style="color:var(--cyan)">think</span>.<br><br>Supports Ollama\'s <span style="color:var(--cyan)">thinking</span> field and inline <span style="color:var(--cyan)">&lt;think&gt;</span> tags.</div></div>'; return; }
+  const tt=thinkingLog.reduce((a,t)=>a+t.tokens,0), ttime=thinkingLog.reduce((a,t)=>a+t.elapsed,0);
+  const atps=ttime>0?(tt/(ttime/1000)).toFixed(1):'—';
+  let h='<div class="think-entry" style="border-left-color:var(--accent-2);background:var(--bg-soft)"><div class="think-entry-meta"><b style="color:var(--cyan)">'+thinkingLog.length+'</b> blocks · <b style="color:var(--cyan)">'+tt+'</b> tok · <b style="color:var(--cyan)">'+(ttime/1000).toFixed(1)+'s</b> · <b style="color:var(--cyan)">'+atps+'</b> tok/s</div></div>';
+  thinkingLog.forEach((t,i)=>{ const tps=t.elapsed>0?(t.tokens/(t.elapsed/1000)).toFixed(1):'—';
+    h+='<div class="think-entry"><div class="think-entry-head"><span class="think-entry-label">Block '+(i+1)+(t.partial?' (partial)':'')+'</span><span class="think-entry-meta">'+t.tokens+' tok · '+(t.elapsed/1000).toFixed(1)+'s · '+tps+' tok/s</span></div><div class="think-entry-body">'+esc(t.content)+'</div></div>'; });
+  debugContent.innerHTML=h; debugContent.scrollTop=debugContent.scrollHeight;
+}
 
-  const parts = [tokCount + ' tok', (elapsed / 1000).toFixed(1) + 's', tps.toFixed(1) + ' tok/s', 'TTFT ' + ttft.toFixed(0) + 'ms'];
-  if (lastData?.prompt_eval_count) parts.push('prompt: ' + lastData.prompt_eval_count + ' tok');
-  metaEl.innerHTML = parts.map(p => {
-    let c = '';
-    if (p.includes('tok/s')) { const v = parseFloat(p); c = v > 20 ? 'good' : v > 5 ? '' : 'warn'; }
-    return '<span class="meta-item ' + c + '">' + p + '</span>';
-  }).join('');
-
-  // Final re-render of content with proper thinking stats
-  const lastThink = thinkingLog.length > 0 ? thinkingLog[thinkingLog.length - 1] : null;
-  let finalHtml = '';
-  if (thinkFull) {
-    const thinkOpts = { tokens: lastThink ? lastThink.tokens : thinkTokCount, elapsed: lastThink ? lastThink.elapsed : 0 };
-    finalHtml += renderThinkingBlockHTML(thinkFull, 'tb-final-' + stats.requests, thinkOpts);
-  }
-  const displayParts = parseThinkingTags(full);
-  const hasInlineThinking = displayParts.some(p => p.type === 'thinking');
-  if (hasInlineThinking) {
-    displayParts.forEach((p, i) => {
-      if (p.type === 'thinking') {
-        const tOpts = { tokens: lastThink ? lastThink.tokens : 0, elapsed: lastThink ? lastThink.elapsed : 0 };
-        finalHtml += renderThinkingBlockHTML(p.content, 'tb-final-inline-' + i, tOpts);
-      } else {
-        finalHtml += '<span style="white-space:pre-wrap">' + esc(p.content) + '</span>';
-      }
-    });
-    contentEl.innerHTML = finalHtml;
-  } else if (thinkFull) {
-    finalHtml += '<span style="white-space:pre-wrap">' + esc(full) + '</span>';
-    contentEl.innerHTML = finalHtml;
-  }
-
-  stats.totalTokens += tokCount;
-  stats.totalPromptTokens += (lastData?.prompt_eval_count || 0);
-  stats.totalTime += elapsed;
-  stats.requests++;
-  stats.perRequest.push(rs);
-  addRawLog('res', 'Complete', rs);
-  addTimeline('Done: ' + tokCount + ' tok, ' + tps.toFixed(1) + ' tok/s');
-  messages.push({ role: 'assistant', content: full });
-  currentAbort = null;
-  setGenerating(false);
+// ---- SESSION SAVE/LOAD ----
+function getSessions(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||'[]'); }catch(e){ return []; } }
+function setSessions(s){ try{ localStorage.setItem(SESS_KEY,JSON.stringify(s)); }catch(e){} }
+function autosave(){ try{ localStorage.setItem('llm-dyno-autosave',JSON.stringify({messages,sys:sysInput.value,sysEnabled})); }catch(e){} }
+function restoreAutosave(){
+  try{ const a=JSON.parse(localStorage.getItem('llm-dyno-autosave')||'null'); if(a&&a.messages?.length){ loadConversation(a.messages,a.sys,a.sysEnabled); } }catch(e){}
+}
+function loadConversation(msgs,sys,en){
+  messages=msgs.map(m=>({role:m.role,content:m.content}));
+  if(sys!=null){ sysInput.value=sys; autoResize(sysInput,160); }
+  if(en!=null){ sysEnabled=en; $('sysToggle').textContent=en?'ON':'OFF'; $('sysToggle').classList.toggle('off',!en); sysInput.style.opacity=en?'1':'.3'; }
+  rebuildChat();
+}
+function rebuildChat(){
+  chatArea.querySelectorAll('.msg').forEach(m=>m.remove());
+  const e=$('chatEmpty'); if(e&&messages.length) e.remove();
+  messages.forEach((m,i)=>appendMsg(m.role,m.content,{idx:i,label:m.role==='assistant'?modelSelect.value.split(':')[0]:'user'}));
   renderDebug();
 }
-
-// Live thinking tab update during generation
-function renderLiveThinking(content, tokCount, elapsed) {
-  const tps = elapsed > 0 ? (tokCount / (elapsed / 1000)).toFixed(1) : '—';
-  let h = '<div class="think-stats">' +
-    '<span style="color:var(--accent-think);font-weight:600">&#x1F4AD; Live</span>' +
-    '<span><span class="val">' + tokCount + '</span> tok</span>' +
-    '<span><span class="val">' + (elapsed / 1000).toFixed(1) + 's</span></span>' +
-    '<span><span class="val">' + tps + '</span> tok/s</span>' +
-    '</div>';
-
-  // Show past completed blocks first
-  thinkingLog.forEach((t, i) => {
-    const ttps = t.elapsed > 0 ? (t.tokens / (t.elapsed / 1000)).toFixed(1) : '—';
-    h += '<div class="think-entry">' +
-      '<div class="think-entry-header">' +
-      '<span class="think-entry-label">Block ' + (i + 1) + (t.partial ? ' (partial)' : '') + '</span>' +
-      '<span class="think-entry-meta">' + t.tokens + ' tok · ' + (t.elapsed / 1000).toFixed(1) + 's · ' + ttps + ' tok/s</span>' +
-      '</div>' +
-      '<div class="think-entry-content">' + esc(t.content) + '</div>' +
-      '</div>';
-  });
-
-  // Current live block
-  h += '<div class="think-entry" style="border-color:var(--accent-think);opacity:.85">' +
-    '<div class="think-entry-header">' +
-    '<span class="think-entry-label" style="animation:blink .6s infinite">&#x25CF; Live</span>' +
-    '<span class="think-entry-meta">' + tokCount + ' tok · ' + (elapsed / 1000).toFixed(1) + 's · ' + tps + ' tok/s</span>' +
-    '</div>' +
-    '<div class="think-entry-content" style="max-height:300px;overflow-y:auto">' + esc(content) + '</div>' +
-    '</div>';
-
-  debugContent.innerHTML = h;
-  debugContent.scrollTop = debugContent.scrollHeight;
+function renderSessionList(){
+  const list=$('sessionList'); const s=getSessions();
+  list.innerHTML = s.length? s.map((x,i)=>'<div class="session-item"><div class="session-load" data-i="'+i+'"><div>'+esc(x.name)+'</div><div class="session-meta">'+x.messages.length+' msgs · '+new Date(x.ts).toLocaleString()+'</div></div><button class="session-del" data-i="'+i+'">&#x2715;</button></div>').join('')
+    : '<div class="empty">No saved sessions.</div>';
 }
 
-function renderDebug() {
-  streamEl = null;
-  if (debugTab === 'stream') {
-    if (!tokenLog.length) {
-      debugContent.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">Tokens stream here in real time.<br><br><span style="color:var(--accent-warm)">Hover</span> for timing. Separators between requests.<br><span style="color:var(--accent-think)">Blue tokens</span> = thinking.</div>';
-      return;
-    }
-    let h = '<div class="token-stream" id="tsc">';
-    tokenLog.forEach(t => {
-      if (t.type === 'separator') h += '</div><div class="token-sep"></div><div class="token-stream">';
-      else h += '<span class="token' + (t.isThinking ? ' think-token' : '') + '" title="t+' + (t.time - (tokenLog[0]?.time || 0)) + 'ms' + (t.isThinking ? ' [thinking]' : '') + '">' + esc(t.token) + '</span>';
-    });
-    h += '</div>';
-    debugContent.innerHTML = h;
-    streamEl = document.getElementById('tsc');
-    debugContent.scrollTop = debugContent.scrollHeight;
-  } else if (debugTab === 'thinking') {
-    renderThinkingTab();
-  } else if (debugTab === 'raw') {
-    if (!rawLog.length) { debugContent.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">Raw API payloads logged here.</div>'; return; }
-    debugContent.innerHTML = rawLog.map(e =>
-      '<div class="entry"><span class="timestamp">' + timeStr(e.time) + '</span> <span class="label ' + e.type + '">' + e.type.toUpperCase() + '</span> ' + esc(e.label) +
-      (e.data ? '<pre>' + esc(JSON.stringify(e.data, null, 2)) + '</pre>' : '') + '</div>'
-    ).join('');
-    debugContent.scrollTop = debugContent.scrollHeight;
-  } else if (debugTab === 'stats') {
-    const avg = stats.perRequest.length ? (stats.perRequest.reduce((a, r) => a + parseFloat(r.tps), 0) / stats.perRequest.length).toFixed(1) : '\u2014';
-    let h = '<div class="stats-grid"><div class="stat-box"><div class="stat-val">' + stats.requests + '</div><div class="stat-label">requests</div></div><div class="stat-box"><div class="stat-val">' + stats.totalTokens + '</div><div class="stat-label">gen tokens</div></div><div class="stat-box"><div class="stat-val">' + avg + '</div><div class="stat-label">avg tok/s</div></div><div class="stat-box"><div class="stat-val">' + stats.totalPromptTokens + '</div><div class="stat-label">prompt tokens</div></div></div>';
-    if (stats.perRequest.length) {
-      h += '<div style="color:var(--accent-warm);margin:12px 0 8px">Per-Request:</div>';
-      stats.perRequest.forEach((r, i) => {
-        const t = parseFloat(r.tps), bw = Math.min(100, t / 60 * 100), bc = t > 20 ? 'var(--accent-green)' : t > 8 ? 'var(--accent-warm)' : 'var(--accent-red)';
-        h += '<div class="entry"><div style="color:var(--text-bright)">Req ' + (i + 1) + '</div><div style="margin:4px 0">' + r.tokens + ' tok &middot; ' + t + ' tok/s &middot; TTFT ' + r.ttft_ms + 'ms &middot; ' + (parseFloat(r.elapsed_ms) / 1000).toFixed(1) + 's</div><div class="perf-bar"><div class="fill" style="width:' + bw + '%;background:' + bc + '"></div></div>';
-        if (r.ol_eval_tps) h += '<div style="margin-top:6px;font-size:.9em"><span style="color:var(--accent-purple)">Ollama:</span> eval ' + r.ol_eval_tps + ' tok/s' + (r.ol_prompt_ms ? ' &middot; prompt ' + r.ol_prompt_ms + 'ms' : '') + (r.ol_load_ms ? ' &middot; load ' + r.ol_load_ms + 'ms' : '') + '</div>';
-        h += '<div style="margin-top:4px;font-size:.85em;color:var(--text-dim)">temp=' + r.temperature + ' top_p=' + r.top_p + ' top_k=' + r.top_k + ' rep=' + r.repeat_penalty + ' seed=' + r.seed + '</div></div>';
-      });
-    }
-    debugContent.innerHTML = h;
-  } else if (debugTab === 'messages') {
-    const all = [];
-    if (systemPromptEnabled && sysInput.value.trim()) all.push({ role: 'system', content: sysInput.value.trim() });
-    all.push(...messages);
-    let h = '<div style="margin-bottom:12px"><span style="color:var(--accent-purple)">messages[]</span> <span style="color:var(--text-dim)">' + all.length + ' entries &middot; ~' + JSON.stringify(all).length + ' chars</span></div>';
-    all.forEach((m, i) => {
-      const p = m.content.length > 100 ? m.content.slice(0, 100) + '\u2026' : m.content;
-      h += '<div class="msg-entry role-' + m.role + '" onclick="this.classList.toggle(\'expanded\')"><span class="me-role ' + m.role + '">[' + i + '] ' + m.role + '</span> <span class="me-preview">' + esc(p) + '</span><pre class="me-full">' + esc(m.content) + '</pre></div>';
-    });
-    h += '<div style="margin-top:16px"><span style="color:var(--text-dim)">Payload:</span><pre>' + esc(JSON.stringify(all, null, 2)) + '</pre></div>';
-    debugContent.innerHTML = h;
-  } else if (debugTab === 'timeline') {
-    if (!timelineLog.length) { debugContent.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">Event timeline.</div>'; return; }
-    const t0 = timelineLog[0].time;
-    debugContent.innerHTML = timelineLog.map(e => {
-      const off = e.time - t0;
-      const os = off > 60000 ? '+' + (off / 60000).toFixed(1) + 'm' : '+' + (off / 1000).toFixed(1) + 's';
-      return '<div class="timeline-entry"><span class="te-time">' + timeStr(e.time) + '<br><span style="color:var(--accent-warm)">' + os + '</span></span><span class="te-event">' + esc(e.event) + '</span></div>';
-    }).join('');
-    debugContent.scrollTop = debugContent.scrollHeight;
-  } else if (debugTab === 'model') {
-    if (!currentModelInfo) { debugContent.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">Select a model to inspect.</div>'; return; }
-    const m = currentModelInfo;
-    let h = '<div style="color:var(--accent-warm);margin-bottom:12px">' + modelSelect.value + '</div>';
-    if (m.details) h += '<div class="entry"><span class="label sys">DETAILS</span><pre>' + esc(JSON.stringify(m.details, null, 2)) + '</pre></div>';
-    if (m.model_info) h += '<div class="entry"><span class="label sys">ARCHITECTURE</span><pre>' + esc(JSON.stringify(m.model_info, null, 2)) + '</pre></div>';
-    if (m.parameters) h += '<div class="entry"><span class="label sys">PARAMETERS</span><pre>' + esc(m.parameters) + '</pre></div>';
-    if (m.template) h += '<div class="entry"><span class="label sys">TEMPLATE</span><pre>' + esc(m.template) + '</pre></div>';
-    if (m.modelfile) h += '<div class="entry"><span class="label sys">MODELFILE</span><pre>' + esc(m.modelfile) + '</pre></div>';
-    debugContent.innerHTML = h;
+// ---- EXPORT ----
+function exportSession(){
+  const d={ exported_at:new Date().toISOString(), app:'LLM-Dyno', ollama_url:OLLAMA, model:modelSelect.value,
+    system_prompt:sysEnabled?sysInput.value:null, parameters:getOptions(), think:$('thinkToggle').checked,
+    messages, stats, thinking:thinkingLog, timeline:timelineLog, model_info:currentModelInfo };
+  const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download='dyno-'+modelSelect.value.replace(/[:/]/g,'-')+'-'+Date.now()+'.json'; a.click(); addTL('Exported');
+}
+
+// ---- MESSAGE ACTIONS ----
+chatArea.addEventListener('click',e=>{
+  const tog=e.target.closest('[data-toggle]'); if(tog){ const id=tog.dataset.toggle; $(id)?.classList.toggle('open'); $(id+'-c')?.classList.toggle('collapsed'); return; }
+  const cb=e.target.closest('.codeblock-copy'); if(cb){ copyText(decodeURIComponent(cb.dataset.code)); cb.textContent='copied'; setTimeout(()=>cb.textContent='copy',1200); return; }
+  const act=e.target.closest('.act-btn'); if(!act) return;
+  const msgEl=act.closest('.msg'); const idx=parseInt(msgEl.dataset.idx); const a=act.dataset.act;
+  if(a==='copy'){ copyText(messages[idx]?.content||''); act.textContent='copied'; setTimeout(()=>act.textContent='copy',1200); }
+  else if(a==='del'){ deleteFrom(idx, msgEl); }
+  else if(a==='edit'){ userInput.value=messages[idx].content; autoResize(userInput,240); userInput.focus(); truncateFrom(idx); }
+  else if(a==='regen'){ if(!isGenerating) sendMessage(true); }
+  else if(a==='raw'){ const t=msgEl.querySelector('.msg-text'); const useMd=!t.classList.contains('md');
+    t.className='msg-text'+(useMd?' md':''); t.innerHTML=renderAssistant(messages[idx].content,useMd); act.textContent=useMd?'raw':'render'; }
+});
+function deleteFrom(idx,el){ messages.splice(idx); chatArea.querySelectorAll('.msg').forEach(m=>{ if(parseInt(m.dataset.idx)>=idx) m.remove(); }); autosave(); renderDebug(); }
+function truncateFrom(idx){ messages.splice(idx); chatArea.querySelectorAll('.msg').forEach(m=>{ if(parseInt(m.dataset.idx)>=idx) m.remove(); }); autosave(); }
+
+// ---- EVENTS ----
+sendBtn.onclick=()=>{ if(isGenerating&&currentAbort) currentAbort.abort(); else sendMessage(); };
+userInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); if(isGenerating&&currentAbort) currentAbort.abort(); else sendMessage(); }
+  if(e.key==='Escape'&&currentAbort) currentAbort.abort();
+  if(e.key==='ArrowUp'&&!userInput.value.trim()){ const lastU=[...messages].reverse().find(m=>m.role==='user'); if(lastU){ e.preventDefault(); const idx=messages.lastIndexOf(lastU); userInput.value=lastU.content; autoResize(userInput,240); truncateFrom(idx); } }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&currentAbort) currentAbort.abort();
+  if((e.ctrlKey||e.metaKey)&&e.key==='r'&&!isGenerating){ e.preventDefault(); sendMessage(true); }
+});
+userInput.addEventListener('input',()=>autoResize(userInput,240));
+sysInput.addEventListener('input',()=>{ autoResize(sysInput,160); });
+
+$('tempSlider').oninput=e=>{ $('tempInput').value=(e.target.value/100).toFixed(2); $('presetSelect').value='custom'; };
+$('tempInput').oninput=e=>{ $('tempSlider').value=Math.round(parseFloat(e.target.value)*100); };
+$('topPSlider').oninput=e=>{ $('topPInput').value=(e.target.value/100).toFixed(2); $('presetSelect').value='custom'; };
+$('topPInput').oninput=e=>{ $('topPSlider').value=Math.round(parseFloat(e.target.value)*100); };
+$('ctxInput').oninput=updateCtxMeter;
+$('presetSelect').onchange=e=>{ if(e.target.value!=='custom') applyPreset(e.target.value); };
+$('thinkToggle').onchange=e=>$('thinkLabel').classList.toggle('on',e.target.checked);
+
+document.querySelectorAll('.debug-tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.debug-tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); debugTab=t.dataset.tab; streamEl=null; renderDebug();
+});
+$('debugToggle').onclick=()=>{ settings.debugOpen=!settings.debugOpen; applySettings(); saveSettings(); };
+$('newBtn').onclick=()=>{ if(messages.length&&!confirm('Start a new chat? Current conversation will be cleared (export or save first).')) return;
+  messages=[]; tokenLog=[]; rawLog=[]; timelineLog=[]; thinkingLog=[]; lastPromptTokens=0;
+  stats={totalTokens:0,totalPromptTokens:0,totalTime:0,requests:0,perRequest:[]};
+  chatArea.querySelectorAll('.msg').forEach(m=>m.remove());
+  if(!$('chatEmpty')){
+    const e=document.createElement('div'); e.className='chat-empty'; e.id='chatEmpty';
+    e.innerHTML='<div class="big">&#x25E7;</div><div>A workbench for your local models.</div>'+
+      '<div style="font-size:.85em;margin-top:8px">Pick a model, tune the params, and talk.<br>'+
+      '<kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> newline · <kbd>Esc</kbd> stop · <kbd>↑</kbd> edit last</div>';
+    chatArea.insertBefore(e, scrollResume);
   }
-}
+  lastPromptTokens=0; streamEl=null; updateThinkTab(); renderDebug(); updateCtxMeter();
+  addTL('New chat'); localStorage.removeItem('llm-dyno-autosave'); };
+$('exportBtn').onclick=exportSession;
+$('refreshModels').onclick=refreshModels;
+$('sysToggle').onclick=()=>{ sysEnabled=!sysEnabled; $('sysToggle').textContent=sysEnabled?'ON':'OFF';
+  $('sysToggle').classList.toggle('off',!sysEnabled); sysInput.style.opacity=sysEnabled?'1':'.3'; addTL('Sys prompt '+(sysEnabled?'ON':'OFF')); };
 
-function renderThinkingTab() {
-  if (!thinkingLog.length && !isGenerating) {
-    debugContent.innerHTML = '<div class="think-empty"><div class="icon">&#x1F4AD;</div>' +
-      '<div>No thinking blocks captured yet.</div><br>' +
-      '<div style="font-size:.85em">Use a reasoning model like <span style="color:var(--accent-warm)">DeepSeek-R1</span>.<br><br>' +
-      'Supports both:<br>' +
-      '&bull; Ollama\'s <span style="color:var(--accent-think)">thinking</span> field (newer API)<br>' +
-      '&bull; Inline <span style="color:var(--accent-think)">&lt;think&gt;</span> tags in content<br><br>' +
-      'Thinking content appears here in real time.</div></div>';
-    return;
-  }
+// settings modal
+$('settingsBtn').onclick=()=>$('settingsOverlay').classList.add('open');
+$('settingsClose').onclick=()=>{ $('settingsOverlay').classList.remove('open'); };
+$('settingsOverlay').onclick=e=>{ if(e.target===$('settingsOverlay')) $('settingsOverlay').classList.remove('open'); };
+$('setScanlines').onchange=e=>{ settings.scanlines=e.target.checked; applySettings(); saveSettings(); };
+$('setLigatures').onchange=e=>{ settings.ligatures=e.target.checked; applySettings(); saveSettings(); };
+$('setMarkdown').onchange=e=>{ settings.markdown=e.target.checked; saveSettings(); };
+$('setChatFont').oninput=e=>{ settings.chatFont=parseFloat(e.target.value); $('setChatFontVal').textContent=e.target.value+'px'; applySettings(); saveSettings(); };
+$('setDebugFont').oninput=e=>{ settings.debugFont=parseFloat(e.target.value); $('setDebugFontVal').textContent=e.target.value+'px'; applySettings(); saveSettings(); };
+$('setDebugWidth').oninput=e=>{ settings.debugWidth=parseInt(e.target.value); $('setDebugWidthVal').textContent=e.target.value+'px'; applySettings(); saveSettings(); };
+$('setOllamaUrl').onchange=e=>{ settings.ollamaUrl=e.target.value.trim().replace(/\/$/,''); applySettings(); saveSettings(); addTL('Ollama URL: '+settings.ollamaUrl); refreshModels(); };
+$('settingsReset').onclick=()=>{ if(!confirm('Reset all settings to defaults?')) return; settings={...DEFAULTS}; applySettings(); saveSettings(); refreshModels(); };
 
-  // Summary stats
-  const totalThinkTok = thinkingLog.reduce((a, t) => a + t.tokens, 0);
-  const totalThinkTime = thinkingLog.reduce((a, t) => a + t.elapsed, 0);
-  const avgThinkTps = totalThinkTime > 0 ? (totalThinkTok / (totalThinkTime / 1000)).toFixed(1) : '—';
-
-  let h = '<div class="think-stats">' +
-    '<span><span class="val">' + thinkingLog.length + '</span> block' + (thinkingLog.length !== 1 ? 's' : '') + '</span>' +
-    '<span><span class="val">' + totalThinkTok + '</span> tok</span>' +
-    '<span><span class="val">' + (totalThinkTime / 1000).toFixed(1) + 's</span> total</span>' +
-    '<span><span class="val">' + avgThinkTps + '</span> tok/s</span>' +
-    '</div>';
-
-  thinkingLog.forEach((t, i) => {
-    const tps = t.elapsed > 0 ? (t.tokens / (t.elapsed / 1000)).toFixed(1) : '—';
-    h += '<div class="think-entry">' +
-      '<div class="think-entry-header">' +
-      '<span class="think-entry-label">Block ' + (i + 1) + (t.partial ? ' (partial)' : '') + '</span>' +
-      '<span class="think-entry-meta">' + t.tokens + ' tok · ' + (t.elapsed / 1000).toFixed(1) + 's · ' + tps + ' tok/s</span>' +
-      '</div>' +
-      '<div class="think-entry-content">' + esc(t.content) + '</div>' +
-      '</div>';
-  });
-
-  debugContent.innerHTML = h;
-  debugContent.scrollTop = debugContent.scrollHeight;
-}
-
-// Events
-sendBtn.addEventListener('click', () => { if (isGenerating && currentAbort) currentAbort.abort(); else sendMessage(); });
-userInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (isGenerating && currentAbort) currentAbort.abort(); else sendMessage(); }
-  if (e.key === 'Escape' && currentAbort) currentAbort.abort();
-});
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && currentAbort) currentAbort.abort(); });
-userInput.addEventListener('input', () => autoResize(userInput));
-
-$('tempSlider').addEventListener('input', e => { $('tempInput').value = (e.target.value / 100).toFixed(1); });
-$('tempInput').addEventListener('input', e => { $('tempSlider').value = Math.round(parseFloat(e.target.value) * 100); });
-$('topPSlider').addEventListener('input', e => { $('topPInput').value = (e.target.value / 100).toFixed(2); });
-$('topPInput').addEventListener('input', e => { $('topPSlider').value = Math.round(parseFloat(e.target.value) * 100); });
-
-document.querySelectorAll('.debug-tab').forEach(t => t.addEventListener('click', () => {
-  document.querySelectorAll('.debug-tab').forEach(x => x.classList.remove('active'));
-  t.classList.add('active'); debugTab = t.dataset.tab; streamEl = null; renderDebug();
-}));
-
-$('debugToggle').addEventListener('click', () => {
-  $('app').classList.toggle('debug-closed');
-  $('debugToggle').classList.toggle('active');
-  persistCurrent();
+// sessions modal
+$('sessionsBtn').onclick=()=>{ renderSessionList(); $('sessionsOverlay').classList.add('open'); };
+$('sessionsClose').onclick=()=>$('sessionsOverlay').classList.remove('open');
+$('sessionsOverlay').onclick=e=>{ if(e.target===$('sessionsOverlay')) $('sessionsOverlay').classList.remove('open'); };
+$('saveSessionBtn').onclick=()=>{ const name=$('sessionName').value.trim()||('session '+new Date().toLocaleString());
+  if(!messages.length){ alert('Nothing to save.'); return; }
+  const s=getSessions(); s.unshift({name,ts:Date.now(),messages,sys:sysInput.value,sysEnabled}); setSessions(s); $('sessionName').value=''; renderSessionList(); };
+$('sessionList').addEventListener('click',e=>{
+  const load=e.target.closest('.session-load'); const del=e.target.closest('.session-del');
+  const s=getSessions();
+  if(del){ s.splice(parseInt(del.dataset.i),1); setSessions(s); renderSessionList(); return; }
+  if(load){ const x=s[parseInt(load.dataset.i)]; loadConversation(x.messages,x.sys,x.sysEnabled); $('sessionsOverlay').classList.remove('open'); addTL('Loaded session: '+x.name); }
 });
 
-$('clearBtn').addEventListener('click', () => {
-  messages = []; tokenLog = []; rawLog = []; timelineLog = []; thinkingLog = [];
-  stats = { totalTokens: 0, totalPromptTokens: 0, totalTime: 0, requests: 0, perRequest: [] };
-  while (chatArea.children.length > 1) chatArea.removeChild(chatArea.firstChild);
-  streamEl = null; updateThinkingTabState(); renderDebug(); addTimeline('Cleared');
-});
-
-$('exportBtn').addEventListener('click', () => {
-  const d = {
-    exported_at: new Date().toISOString(),
-    app: 'LLM-Dyno',
-    ollama_url: OLLAMA_BASE,
-    model: modelSelect.value,
-    system_prompt: systemPromptEnabled ? sysInput.value : null,
-    parameters: {
-      temperature: parseFloat($('tempInput').value),
-      max_tokens: parseInt($('maxTokInput').value),
-      top_p: parseFloat($('topPInput').value),
-      top_k: parseInt($('topKInput').value),
-      repeat_penalty: parseFloat($('repeatPenInput').value),
-      seed: parseInt($('seedInput').value)
-    },
-    messages, stats, thinking: thinkingLog, timeline: timelineLog, model_info: currentModelInfo
-  };
-  const b = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(b);
-  a.download = 'dyno-' + modelSelect.value.replace(/[:/]/g, '-') + '-' + Date.now() + '.json';
-  a.click();
-  addTimeline('Exported');
-});
-
-$('refreshModels').addEventListener('click', refreshModels);
-
-$('spToggle').addEventListener('click', () => {
-  systemPromptEnabled = !systemPromptEnabled;
-  $('spToggle').textContent = systemPromptEnabled ? 'ON' : 'OFF';
-  $('spToggle').classList.toggle('off', !systemPromptEnabled);
-  sysInput.style.opacity = systemPromptEnabled ? '1' : '0.3';
-  addTimeline('Sys prompt ' + (systemPromptEnabled ? 'ON' : 'OFF'));
-});
-
-// Settings panel
-$('settingsBtn').addEventListener('click', () => $('settingsOverlay').classList.add('open'));
-$('settingsClose').addEventListener('click', () => { $('settingsOverlay').classList.remove('open'); persistCurrent(); });
-$('settingsOverlay').addEventListener('click', e => { if (e.target === $('settingsOverlay')) { $('settingsOverlay').classList.remove('open'); persistCurrent(); } });
-
-$('setChatFont').addEventListener('input', e => {
-  const v = e.target.value; $('setChatFontVal').textContent = v + 'px';
-  document.documentElement.style.setProperty('--font-size', v + 'px');
-});
-$('setDebugFont').addEventListener('input', e => {
-  const v = e.target.value; $('setDebugFontVal').textContent = v + 'px';
-  document.documentElement.style.setProperty('--debug-font-size', v + 'px');
-});
-$('setDebugWidth').addEventListener('input', e => {
-  const v = e.target.value; $('setDebugWidthVal').textContent = v + 'px';
-  document.documentElement.style.setProperty('--debug-width', v + 'px');
-});
-$('setScrollThresh').addEventListener('input', e => {
-  scrollThreshold = parseInt(e.target.value);
-  $('setScrollThreshVal').textContent = e.target.value + 'px';
-});
-$('setOllamaUrl').addEventListener('change', e => {
-  OLLAMA_BASE = e.target.value.replace(/\/$/, '');
-  persistCurrent();
-  addTimeline('Ollama URL changed: ' + OLLAMA_BASE);
-  refreshModels();
-});
-
-$('settingsReset').addEventListener('click', () => {
-  if (!confirm('Reset all settings to defaults?')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  settings = Object.assign({}, DEFAULTS);
-  applySettings(settings);
-  addTimeline('Settings reset to defaults');
-  refreshModels();
-});
-
-// Boot
+// ---- BOOT ----
+buildThemeFontPickers();
+applySettings();
+restoreAutosave();
 refreshModels();
 renderDebug();
-autoResize(sysInput);
-sysInput.addEventListener('input', () => autoResize(sysInput));
+autoResize(sysInput,160);
 </script>
 </body>
 </html>
